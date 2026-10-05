@@ -27,7 +27,7 @@ func (a API) App() *fiber.App {
 
 	app.Use(requestid.New())
 	app.Use(recover.New())
-	
+
 	app.Get("/health", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "healthy"})
 	})
@@ -128,7 +128,10 @@ func (a API) errorHandler(c fiber.Ctx, err error) error {
 
 	status := fiber.StatusInternalServerError
 	code, msg := "internal_error", "Internal server error"
+	var fiberErr *fiber.Error
 	switch {
+	case errors.As(err, &fiberErr):
+		status, code, msg = fiberErr.Code, "http_error", fiberErr.Message
 	case errors.Is(err, domain.ErrValidation):
 		status, code, msg = 400, "validation_error", err.Error()
 	case errors.As(err, new(domain.FieldError)):
