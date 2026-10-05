@@ -43,15 +43,15 @@ func Load() (Config, error) {
 	return c, nil
 }
 
-func getEnv(key, defaultValue string) string {
-	if v := os.Getenv(key); v != "" {
+func getEnv(value, defaultValue string) string {
+	if v := os.Getenv(value); v != "" {
 		return v
 	}
 	return defaultValue
 }
 func list(k string) []string {
 	var out []string
-	for _, v := range strings.Split(os.Getenv(k), ",") {
+	for v := range strings.SplitSeq(os.Getenv(k), ",") {
 		if v = strings.TrimSpace(v); v != "" {
 			out = append(out, v)
 		}
