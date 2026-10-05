@@ -1,0 +1,16 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+CREATE TABLE IF NOT EXISTS users (
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT UNIQUE NOT NULL, full_name TEXT,
+ password_hash TEXT, email_verified BOOLEAN NOT NULL DEFAULT false, roles TEXT[] NOT NULL DEFAULT ARRAY['user'],
+ teams TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], is_active BOOLEAN NOT NULL DEFAULT true,
+ legacy_firebase_uid TEXT UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS refresh_tokens (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,token_hash TEXT UNIQUE NOT NULL,expires_at TIMESTAMPTZ NOT NULL,revoked_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS refresh_tokens_active_idx ON refresh_tokens(token_hash) WHERE revoked_at IS NULL;
+CREATE TABLE IF NOT EXISTS events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),slug TEXT UNIQUE NOT NULL,title TEXT NOT NULL,description TEXT,starts_at TIMESTAMPTZ NOT NULL,ends_at TIMESTAMPTZ,capacity INT,status TEXT NOT NULL DEFAULT 'draft',created_by UUID REFERENCES users(id),created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS event_registrations (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,status TEXT NOT NULL DEFAULT 'registered',created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(event_id,user_id));
+CREATE TABLE IF NOT EXISTS event_checkins (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,checked_in_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(event_id,user_id));
+CREATE TABLE IF NOT EXISTS certificates (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),event_id UUID REFERENCES events(id),user_id UUID NOT NULL REFERENCES users(id),title TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'pending',download_url TEXT,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(event_id,user_id));
+CREATE TABLE IF NOT EXISTS radar_game_scores (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID NOT NULL REFERENCES users(id),game TEXT NOT NULL,puzzle_id TEXT,score INT NOT NULL,meta JSONB,played_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS radar_reads (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID NOT NULL REFERENCES users(id),slug TEXT NOT NULL,seconds INT NOT NULL DEFAULT 0,read_count INT NOT NULL DEFAULT 1,read_at TIMESTAMPTZ NOT NULL DEFAULT now(),UNIQUE(user_id,slug));
+CREATE TABLE IF NOT EXISTS team_members (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID REFERENCES users(id),name TEXT NOT NULL,role TEXT,section TEXT,image_url TEXT,is_public BOOLEAN NOT NULL DEFAULT true,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
