@@ -1,11 +1,53 @@
 # auth-v2
 
-Go/Fiber replacement for the GDG Babcock platform authentication backend. It removes Firebase and issues platform JWTs with URI audiences.
+Authentication service for the GDG Babcock platform, built with Go and Fiber. It provides email/password and Google sign-in, then issues JWTs for platform services using URI-based audiences.
 
-Copy `.env.example` to `.env`, set a real `JWT_HMAC_SECRET`, then run `docker compose up --build`. The API listens on `http://localhost:8080`; Mailpit is at `http://localhost:8025`.
+## Setup
 
-Endpoints currently provided: `POST /auth/register`, `POST /auth/login`, `GET /auth/google`, `GET /auth/google/callback`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/verify`, and `GET /health`.
+### Requirements
 
-Tokens use `iss=JWT_ISSUER` and an audience chosen from `JWT_AUDIENCES`. The receiving service must validate its own URI. Firebase tokens are intentionally not accepted.
+- Docker and Docker Compose
+- Go 1.27+ (only needed to run the API or tests outside Docker)
 
-To enable Google sign-in, set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URL` (registered in Google Cloud as `<your auth origin>/auth/google/callback`). Visiting `GET /auth/google` starts an OAuth authorization-code flow. The callback validates Google's ID token, requires a verified email, links an existing matching email or creates a user, and returns the usual session response. OAuth state is protected by a short-lived, HTTP-only cookie.
+### Configure and run locally
+
+1. Create your local environment file:
+
+   ```sh
+   cp .env.example .env
+   ```
+
+2. Set a secure `JWT_HMAC_SECRET` in `.env` (at least 32 characters). Review `JWT_AUDIENCES` and, if needed, add your Google OAuth credentials.
+
+3. Start PostgreSQL, Mailpit, and the API:
+
+   ```sh
+   docker compose up --build
+   ```
+
+4. On a new database, apply the migrations from another terminal:
+
+   ```sh
+   docker compose run --rm api migrate
+   ```
+
+The API is available at `http://localhost:8080`, the health check is at `http://localhost:8080/health`, and Mailpit is available at `http://localhost:8025`.
+
+To run without Docker, make sure `DATABASE_URL` points to a running PostgreSQL instance, then use `go run ./cmd/api`. Run the test suite with `go test ./...`.
+
+## Features
+
+### Done
+
+- Email/password registration and login
+- JWT access tokens with refresh-token rotation
+- Authenticated user profile and token validation endpoints
+- Google OAuth sign-in, including verified-email account linking
+- Role claims in JWTs
+- PostgreSQL-backed users and refresh tokens
+
+### Upcoming
+
+- Admin dashboard UI for user and account administration
+- Password-reset flow for email/password accounts
+- Email verification for email/password registration
