@@ -15,6 +15,6 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("open PostgreSQL database: %w", err)
 	}
 
-	db.AutoMigrate(domain.User{})
+	db.AutoMigrate(domain.User{}, domain.RefreshToken{})
 	return db, nil
 }
