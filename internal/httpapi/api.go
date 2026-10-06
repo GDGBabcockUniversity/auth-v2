@@ -2,6 +2,8 @@ package httpapi
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"log/slog"
 	"strings"
@@ -15,9 +17,10 @@ import (
 )
 
 type API struct {
-	Auth     auth.Service
-	Audience string
-	Log      *slog.Logger
+	Auth          auth.Service
+	Audience      string
+	Log           *slog.Logger
+	SecureCookies bool
 }
 
 func (a API) App() *fiber.App {
@@ -35,6 +38,8 @@ func (a API) App() *fiber.App {
 	g := app.Group("/auth")
 	g.Post("/register", a.register)
 	g.Post("/login", a.login)
+	g.Get("/google", a.googleStart)
+	g.Get("/google/callback", a.googleCallback)
 	g.Post("/refresh", a.refresh)
 	g.Get("/me", a.requireAuth, a.me)
 	g.Get("/verify", a.requireAuth, func(c fiber.Ctx) error {
@@ -45,6 +50,53 @@ func (a API) App() *fiber.App {
 	})
 
 	return app
+}
+
+const googleStateCookie = "google_oauth_state"
+
+func (a API) googleStart(c fiber.Ctx) error {
+	if a.Auth.Google == nil {
+		return domain.ErrNotFound
+	}
+	state, e := oauthState()
+	if e != nil {
+		return e
+	}
+	c.Cookie(&fiber.Cookie{
+		Name:     googleStateCookie,
+		Value:    state,
+		Path:     "/auth/google",
+		MaxAge:   600,
+		HTTPOnly: true,
+		Secure:   a.SecureCookies,
+		SameSite: fiber.CookieSameSiteLaxMode,
+	})
+	return c.Redirect().To(a.Auth.Google.AuthorizationURL(state))
+}
+
+func (a API) googleCallback(c fiber.Ctx) error {
+	state := c.Query("state")
+	if state == "" || state != c.Cookies(googleStateCookie) {
+		return domain.ErrUnauthorized
+	}
+	c.ClearCookie(googleStateCookie)
+
+	if c.Query("error") != "" || c.Query("code") == "" {
+		return domain.ErrUnauthorized
+	}
+	s, e := a.Auth.LoginWithGoogleCode(context.Background(), c.Query("code"))
+	if e != nil {
+		return e
+	}
+	return c.JSON(sessionResponse(s))
+}
+
+func oauthState() (string, error) {
+	b := make([]byte, 32)
+	if _, e := rand.Read(b); e != nil {
+		return "", e
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func (a API) register(c fiber.Ctx) error {
@@ -127,31 +179,28 @@ func sessionResponse(s auth.Session) dto.SessionResponse {
 func (a API) errorHandler(c fiber.Ctx, err error) error {
 
 	status := fiber.StatusInternalServerError
-	code, msg := "internal_error", "Internal server error"
+	msg := "Internal server error"
 	var fiberErr *fiber.Error
 	switch {
 	case errors.As(err, &fiberErr):
-		status, code, msg = fiberErr.Code, "http_error", fiberErr.Message
+		status, msg = fiberErr.Code, fiberErr.Message
 	case errors.Is(err, domain.ErrValidation):
-		status, code, msg = 400, "validation_error", err.Error()
+		status, msg = 400, err.Error()
 	case errors.As(err, new(domain.FieldError)):
-		status, code, msg = 400, "validation_error", err.Error()
+		status, msg = 400, err.Error()
 	case errors.Is(err, domain.ErrUnauthorized), errors.Is(err, domain.ErrInvalidToken), errors.Is(err, domain.ErrExpiredToken), errors.Is(err, domain.ErrRefreshReuse), errors.Is(err, domain.ErrInactiveAccount):
-		status, code, msg = 401, "unauthorized", "Authentication failed"
+		status, msg = 401, "Authentication failed"
 	case errors.Is(err, domain.ErrForbidden):
-		status, code, msg = 403, "forbidden", "Forbidden"
+		status, msg = 403, "Forbidden"
 	case errors.Is(err, domain.ErrNotFound):
-		status, code, msg = 404, "not_found", "Not found"
+		status, msg = 404, "Not found"
 	case errors.Is(err, domain.ErrConflict):
-		status, code, msg = 409, "conflict", "Resource already exists"
+		status, msg = 409, "Resource already exists"
 	}
 	if a.Log != nil && status >= 500 {
 		a.Log.Error("request failed", "error", err, "request_id", requestid.FromContext(c))
 	}
 	return c.Status(status).JSON(dto.ErrorResponse{
-		Success:   false,
-		Error:     msg,
-		Code:      code,
-		RequestID: requestid.FromContext(c),
+		Message: msg,
 	})
 }

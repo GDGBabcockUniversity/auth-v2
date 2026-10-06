@@ -1,10 +1,7 @@
 package dto
 
 type ErrorResponse struct {
-	Success   bool   `json:"success"`
-	Error     string `json:"error"`
-	Code      string `json:"code"`
-	RequestID string `json:"request_id"`
+	Message string `json:"message"`
 }
 
 type UserResponse struct {
