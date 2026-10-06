@@ -1,5 +1,10 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE TABLE IF NOT EXISTS users (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),email TEXT UNIQUE NOT NULL,full_name TEXT,password_hash TEXT,email_verified BOOLEAN NOT NULL DEFAULT false,roles TEXT[] NOT NULL DEFAULT ARRAY['user'],teams TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],is_active BOOLEAN NOT NULL DEFAULT true,legacy_firebase_uid TEXT UNIQUE,created_at TIMESTAMPTZ NOT NULL DEFAULT now(),updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS users (
+ id UUID PRIMARY KEY DEFAULT gen_random_uuid(), email TEXT UNIQUE NOT NULL, full_name TEXT,
+ password_hash TEXT, email_verified BOOLEAN NOT NULL DEFAULT false, roles TEXT[] NOT NULL DEFAULT ARRAY['user'],
+ teams TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], is_active BOOLEAN NOT NULL DEFAULT true,
+ legacy_firebase_uid TEXT UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 CREATE TABLE IF NOT EXISTS refresh_tokens (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,token_hash TEXT UNIQUE NOT NULL,expires_at TIMESTAMPTZ NOT NULL,revoked_at TIMESTAMPTZ,created_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS refresh_tokens_active_idx ON refresh_tokens(token_hash) WHERE revoked_at IS NULL;
 CREATE TABLE IF NOT EXISTS events (id UUID PRIMARY KEY DEFAULT gen_random_uuid(),slug TEXT UNIQUE NOT NULL,title TEXT NOT NULL,description TEXT,starts_at TIMESTAMPTZ NOT NULL,ends_at TIMESTAMPTZ,capacity INT,status TEXT NOT NULL DEFAULT 'draft',created_by UUID REFERENCES users(id),created_at TIMESTAMPTZ NOT NULL DEFAULT now());

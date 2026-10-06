@@ -1,0 +1,6 @@
+.gitignore
+README.md
+migrations/
+.env.example
+.env
+Makefile
