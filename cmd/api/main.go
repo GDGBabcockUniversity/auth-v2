@@ -10,9 +10,9 @@ import (
 
 	"github.com/GDGBabcockUniversity/auth-v2/internal/auth"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/config"
+	"github.com/GDGBabcockUniversity/auth-v2/internal/database"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/httpapi"
-	"github.com/GDGBabcockUniversity/auth-v2/internal/store"
-	"gorm.io/driver/postgres"
+	"github.com/GDGBabcockUniversity/auth-v2/internal/repository"
 	"gorm.io/gorm"
 )
 
@@ -21,14 +21,19 @@ var migrations embed.FS
 
 func main() {
 	cfg, e := config.Load()
+
 	if e != nil {
 		panic(e)
 	}
+
 	ctx := context.Background()
-	db, e := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{TranslateError: true})
+
+	db, e := database.Connect(cfg.DatabaseURL)
+
 	if e != nil {
 		panic(e)
 	}
+
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
 		if e = apply(ctx, db); e != nil {
 			panic(e)
@@ -39,13 +44,15 @@ func main() {
 	refresh := auth.NewManager(cfg.JWTSecret, cfg.JWTIssuer, cfg.JWTAudiences, cfg.RefreshTTL)
 	api := httpapi.API{
 		Auth: auth.Service{
-			UserRepo:   store.UserStore{DB: db},
+			UserRepo:   repository.PostgresUserRepository{DB: db},
+			Google:     auth.NewGoogleProvider(cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.GoogleRedirectURL),
 			Access:     access,
 			Refresh:    refresh,
 			RefreshTTL: cfg.RefreshTTL,
 		},
-		Audience: cfg.JWTAudiences[0],
-		Log:      slog.Default(),
+		Audience:      cfg.JWTAudiences[0],
+		Log:           slog.Default(),
+		SecureCookies: cfg.Environment != "development",
 	}
 	if e = api.App().Listen(":" + cfg.Port); e != nil {
 		panic(e)

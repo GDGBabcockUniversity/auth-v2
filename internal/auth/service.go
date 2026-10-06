@@ -13,8 +13,32 @@ import (
 
 type Service struct {
 	UserRepo        domain.UserRepository
+	Google          *GoogleProvider
 	Access, Refresh *Manager
 	RefreshTTL      time.Duration
+}
+
+func (s Service) LoginWithGoogleCode(ctx context.Context, code string) (Session, error) {
+
+	if s.Google == nil {
+		return Session{}, domain.ErrUnauthorized
+	}
+	identity, e := s.Google.IdentityFromCode(ctx, code)
+
+	if e != nil {
+		return Session{}, domain.ErrUnauthorized
+	}
+
+	u, e := s.UserRepo.FindOrCreateGoogleUser(ctx, identity)
+
+	if e != nil {
+		return Session{}, e
+	}
+
+	if !u.Active {
+		return Session{}, domain.ErrInactiveAccount
+	}
+	return s.issue(ctx, u)
 }
 
 type Session struct {
@@ -40,6 +64,7 @@ func (s Service) Register(ctx context.Context, email, name, password string) (Se
 	}
 	return s.issue(ctx, u)
 }
+
 func (s Service) Login(ctx context.Context, email, password string) (Session, error) {
 	u, e := s.UserRepo.FindByEmail(ctx, email)
 	if e != nil || !VerifyPassword(u.PasswordHash, password) {
@@ -50,6 +75,7 @@ func (s Service) Login(ctx context.Context, email, password string) (Session, er
 	}
 	return s.issue(ctx, u)
 }
+
 func (s Service) RefreshSession(ctx context.Context, raw string) (Session, error) {
 	u, e := s.UserRepo.ConsumeRefresh(ctx, hash(raw))
 	if e != nil {
@@ -60,6 +86,7 @@ func (s Service) RefreshSession(ctx context.Context, raw string) (Session, error
 	}
 	return s.issue(ctx, u)
 }
+
 func (s Service) issue(ctx context.Context, u domain.User) (Session, error) {
 	access, e := s.Access.Issue(u.ID, []string(u.Roles), "access")
 	if e != nil {
@@ -69,8 +96,15 @@ func (s Service) issue(ctx context.Context, u domain.User) (Session, error) {
 	if e = s.UserRepo.SaveRefresh(ctx, u.ID, hash(refresh), time.Now().Add(s.RefreshTTL)); e != nil {
 		return Session{}, e
 	}
-	return Session{User: u, AccessToken: access, RefreshToken: refresh, TokenType: "Bearer", ExpiresIn: int64(s.Access.ttl.Seconds())}, nil
+	return Session{
+		User:         u,
+		AccessToken:  access,
+		RefreshToken: refresh,
+		TokenType:    "Bearer",
+		ExpiresIn:    int64(s.Access.ttl.Seconds()),
+	}, nil
 }
+
 func hash(v string) string {
 	h := sha256.Sum256([]byte(v))
 	return hex.EncodeToString(h[:])

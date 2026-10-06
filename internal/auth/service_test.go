@@ -21,6 +21,13 @@ func (f *fakeUsers) Create(_ context.Context, email, name, hash string) (domain.
 	f.user = domain.User{ID: "u1", Email: email, FullName: name, PasswordHash: hash, Roles: pq.StringArray{"user"}, Active: true}
 	return f.user, nil
 }
+func (f *fakeUsers) FindOrCreateGoogleUser(_ context.Context, identity domain.GoogleIdentity) (domain.User, error) {
+	if f.user.ID != "" {
+		return f.user, nil
+	}
+	f.user = domain.User{ID: "u1", Email: identity.Email, FullName: identity.Name, GoogleSubject: identity.Subject, Roles: pq.StringArray{"user"}, Active: true, EmailVerified: true}
+	return f.user, nil
+}
 func (f *fakeUsers) FindByEmail(_ context.Context, email string) (domain.User, error) {
 	if f.user.Email != email {
 		return domain.User{}, domain.ErrNotFound
