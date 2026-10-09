@@ -13,3 +13,8 @@ type UserRepository interface {
 	SaveRefresh(context.Context, string, string, time.Time) error
 	ConsumeRefresh(context.Context, string) (User, error)
 }
+
+type GoogleHandoffRepository interface {
+	CreateGoogleHandoff(context.Context, string, string, time.Time) error
+	ConsumeGoogleHandoff(context.Context, string) (User, error)
+}

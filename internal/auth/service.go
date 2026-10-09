@@ -2,8 +2,11 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"strings"
 	"time"
 
@@ -18,27 +21,70 @@ type Service struct {
 	RefreshTTL      time.Duration
 }
 
-func (s Service) LoginWithGoogleCode(ctx context.Context, code string) (Session, error) {
-
+func (s Service) googleUser(ctx context.Context, code string) (domain.User, error) {
 	if s.Google == nil {
+		return domain.User{}, domain.ErrUnauthorized
+	}
+	identity, err := s.Google.IdentityFromCode(ctx, code)
+	if err != nil {
+		return domain.User{}, domain.ErrUnauthorized
+	}
+	user, err := s.UserRepo.FindOrCreateGoogleUser(ctx, identity)
+	if err != nil {
+		return domain.User{}, err
+	}
+	if !user.Active {
+		return domain.User{}, domain.ErrInactiveAccount
+	}
+	return user, nil
+}
+
+func (s Service) LoginWithGoogleCode(ctx context.Context, code string) (Session, error) {
+	user, err := s.googleUser(ctx, code)
+	if err != nil {
+		return Session{}, err
+	}
+	return s.issue(ctx, user)
+}
+
+// CreateGoogleHandoff stores only a hash of a short-lived, single-use code.
+func (s Service) CreateGoogleHandoff(ctx context.Context, code string) (string, error) {
+	user, err := s.googleUser(ctx, code)
+	if err != nil {
+		return "", err
+	}
+	repo, ok := s.UserRepo.(domain.GoogleHandoffRepository)
+	if !ok {
+		return "", errors.New("google handoff storage is unavailable")
+	}
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	handoff := base64.RawURLEncoding.EncodeToString(raw)
+	if err := repo.CreateGoogleHandoff(ctx, user.ID, hash(handoff), time.Now().UTC().Add(2*time.Minute)); err != nil {
+		return "", err
+	}
+	return handoff, nil
+}
+
+func (s Service) ExchangeGoogleHandoff(ctx context.Context, handoff string) (Session, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(handoff)
+	if err != nil || len(raw) != 32 {
 		return Session{}, domain.ErrUnauthorized
 	}
-	identity, e := s.Google.IdentityFromCode(ctx, code)
-
-	if e != nil {
-		return Session{}, domain.ErrUnauthorized
+	repo, ok := s.UserRepo.(domain.GoogleHandoffRepository)
+	if !ok {
+		return Session{}, errors.New("google handoff storage is unavailable")
 	}
-
-	u, e := s.UserRepo.FindOrCreateGoogleUser(ctx, identity)
-
-	if e != nil {
-		return Session{}, e
+	user, err := repo.ConsumeGoogleHandoff(ctx, hash(handoff))
+	if err != nil {
+		return Session{}, err
 	}
-
-	if !u.Active {
+	if !user.Active {
 		return Session{}, domain.ErrInactiveAccount
 	}
-	return s.issue(ctx, u)
+	return s.issue(ctx, user)
 }
 
 type Session struct {

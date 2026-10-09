@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ type Config struct {
 	GoogleClientID     string
 	GoogleClientSecret string
 	GoogleRedirectURL  string
+	GoogleReturnURL    string
 	CORSOrigins        []string
 	JWTAudiences       []string
 	AccessTTL          time.Duration
@@ -34,6 +36,7 @@ func Load() (Config, error) {
 		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
+		GoogleReturnURL:    getEnv("GOOGLE_RETURN_URL", ""),
 	}
 
 	var err error
@@ -61,6 +64,15 @@ func Load() (Config, error) {
 	}
 	if configuredGoogleValues != 0 && configuredGoogleValues != len(googleValues) {
 		return c, fmt.Errorf("GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URL must be set together")
+	}
+	if c.GoogleReturnURL != "" && c.GoogleRedirectURL == "" {
+		return c, fmt.Errorf("GOOGLE_RETURN_URL requires Google OAuth to be configured")
+	}
+	if c.GoogleReturnURL != "" {
+		returnURL, err := url.Parse(c.GoogleReturnURL)
+		if err != nil || !returnURL.IsAbs() || (returnURL.Scheme != "https" && returnURL.Scheme != "http") || returnURL.Host == "" {
+			return c, fmt.Errorf("GOOGLE_RETURN_URL must be an absolute HTTP(S) URL")
+		}
 	}
 	return c, nil
 }

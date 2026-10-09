@@ -14,3 +14,7 @@ type LoginRequest struct {
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
+
+type GoogleHandoffRequest struct {
+	Code string `json:"code"`
+}

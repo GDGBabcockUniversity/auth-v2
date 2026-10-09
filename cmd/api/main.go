@@ -50,9 +50,10 @@ func main() {
 			Refresh:    refresh,
 			RefreshTTL: cfg.RefreshTTL,
 		},
-		Audience:      cfg.JWTAudiences[0],
-		Log:           slog.Default(),
-		SecureCookies: cfg.Environment != "development",
+		Audience:        cfg.JWTAudiences[0],
+		Log:             slog.Default(),
+		SecureCookies:   cfg.Environment != "development",
+		GoogleReturnURL: cfg.GoogleReturnURL,
 	}
 	if e = api.App().Listen(":" + cfg.Port); e != nil {
 		panic(e)

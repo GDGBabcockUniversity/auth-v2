@@ -93,6 +93,39 @@ func (r PostgresUserRepository) SaveRefresh(ctx context.Context, userID, hash st
 	return r.DB.WithContext(ctx).Create(&domain.RefreshToken{UserID: userID, TokenHash: hash, ExpiresAt: expires}).Error
 }
 
+func (r PostgresUserRepository) CreateGoogleHandoff(ctx context.Context, userID, codeHash string, expires time.Time) error {
+	if err := r.DB.WithContext(ctx).
+		Where("expires_at <= ?", time.Now().UTC()).
+		Delete(&domain.GoogleHandoff{}).Error; err != nil {
+		return err
+	}
+	handoff := domain.GoogleHandoff{UserID: userID, CodeHash: codeHash, ExpiresAt: expires}
+	return r.DB.WithContext(ctx).Create(&handoff).Error
+}
+
+func (r PostgresUserRepository) ConsumeGoogleHandoff(ctx context.Context, codeHash string) (domain.User, error) {
+	var user domain.User
+	err := r.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var handoff domain.GoogleHandoff
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("code_hash = ? AND expires_at > now()", codeHash).
+			First(&handoff).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return domain.ErrUnauthorized
+			}
+			return err
+		}
+		if err := tx.Delete(&handoff).Error; err != nil {
+			return err
+		}
+		return tx.Where("id = ?", handoff.UserID).First(&user).Error
+	})
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return domain.User{}, domain.ErrNotFound
+	}
+	return user, err
+}
+
 func (r PostgresUserRepository) ConsumeRefresh(ctx context.Context, hash string) (domain.User, error) {
 	var user domain.User
 	err := r.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

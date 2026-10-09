@@ -36,3 +36,15 @@ type RefreshToken struct {
 func (RefreshToken) TableName() string {
 	return "refresh_tokens"
 }
+
+type GoogleHandoff struct {
+	ID        string    `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
+	UserID    string    `gorm:"type:uuid;not null;index"`
+	CodeHash  string    `gorm:"uniqueIndex;not null"`
+	ExpiresAt time.Time `gorm:"not null"`
+	CreatedAt time.Time
+}
+
+func (GoogleHandoff) TableName() string {
+	return "google_handoffs"
+}

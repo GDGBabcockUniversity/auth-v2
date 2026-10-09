@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"log/slog"
+	"net/url"
 	"strings"
 
 	"github.com/GDGBabcockUniversity/auth-v2/internal/auth"
@@ -17,10 +18,11 @@ import (
 )
 
 type API struct {
-	Auth          auth.Service
-	Audience      string
-	Log           *slog.Logger
-	SecureCookies bool
+	Auth            auth.Service
+	Audience        string
+	Log             *slog.Logger
+	SecureCookies   bool
+	GoogleReturnURL string
 }
 
 func (a API) App() *fiber.App {
@@ -40,6 +42,7 @@ func (a API) App() *fiber.App {
 	g.Post("/login", a.login)
 	g.Get("/google", a.googleStart)
 	g.Get("/google/callback", a.googleCallback)
+	g.Post("/exchange", a.exchangeGoogleHandoff)
 	g.Post("/refresh", a.refresh)
 	g.Get("/me", a.requireAuth, a.me)
 	g.Get("/verify", a.requireAuth, func(c fiber.Ctx) error {
@@ -52,7 +55,10 @@ func (a API) App() *fiber.App {
 	return app
 }
 
-const googleStateCookie = "google_oauth_state"
+const (
+	googleStateCookie       = "google_oauth_state"
+	googleReturnStateCookie = "google_return_state"
+)
 
 func (a API) googleStart(c fiber.Ctx) error {
 	if a.Auth.Google == nil {
@@ -61,6 +67,18 @@ func (a API) googleStart(c fiber.Ctx) error {
 	state, e := oauthState()
 	if e != nil {
 		return e
+	}
+	returnState := c.Query("state")
+	if returnState != "" {
+		raw, decodeErr := base64.RawURLEncoding.DecodeString(returnState)
+		if decodeErr != nil || len(raw) < 24 || len(raw) > 64 {
+			return domain.FieldError{Field: "state", Message: "is invalid"}
+		}
+		c.Cookie(&fiber.Cookie{
+			Name: googleReturnStateCookie, Value: returnState,
+			Path: "/auth/google", MaxAge: 600, HTTPOnly: true,
+			Secure: a.SecureCookies, SameSite: fiber.CookieSameSiteLaxMode,
+		})
 	}
 	c.Cookie(&fiber.Cookie{
 		Name:     googleStateCookie,
@@ -79,12 +97,43 @@ func (a API) googleCallback(c fiber.Ctx) error {
 	if state == "" || state != c.Cookies(googleStateCookie) {
 		return domain.ErrUnauthorized
 	}
+	returnState := c.Cookies(googleReturnStateCookie)
 	c.ClearCookie(googleStateCookie)
+	c.ClearCookie(googleReturnStateCookie)
 
 	if c.Query("error") != "" || c.Query("code") == "" {
 		return domain.ErrUnauthorized
 	}
+	if a.GoogleReturnURL != "" && returnState != "" {
+		handoff, err := a.Auth.CreateGoogleHandoff(context.Background(), c.Query("code"))
+		if err != nil {
+			return err
+		}
+		redirect, err := url.Parse(a.GoogleReturnURL)
+		if err != nil || !redirect.IsAbs() || (redirect.Scheme != "https" && redirect.Scheme != "http") || redirect.Host == "" {
+			return domain.ErrValidation
+		}
+		query := redirect.Query()
+		query.Set("code", handoff)
+		query.Set("state", returnState)
+		redirect.RawQuery = query.Encode()
+		c.Set("Cache-Control", "no-store")
+		c.Set("Referrer-Policy", "no-referrer")
+		return c.Redirect().To(redirect.String())
+	}
 	s, e := a.Auth.LoginWithGoogleCode(context.Background(), c.Query("code"))
+	if e != nil {
+		return e
+	}
+	return c.JSON(sessionResponse(s))
+}
+
+func (a API) exchangeGoogleHandoff(c fiber.Ctx) error {
+	var in dto.GoogleHandoffRequest
+	if e := c.Bind().Body(&in); e != nil || in.Code == "" {
+		return domain.FieldError{Field: "code", Message: "is required"}
+	}
+	s, e := a.Auth.ExchangeGoogleHandoff(context.Background(), in.Code)
 	if e != nil {
 		return e
 	}
