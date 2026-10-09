@@ -25,7 +25,7 @@ func (f *fakeUsers) FindOrCreateGoogleUser(_ context.Context, identity domain.Go
 	if f.user.ID != "" {
 		return f.user, nil
 	}
-	f.user = domain.User{ID: "u1", Email: identity.Email, FullName: identity.Name, GoogleSubject: identity.Subject, Roles: pq.StringArray{"user"}, Active: true, EmailVerified: true}
+	f.user = domain.User{ID: "u1", Email: identity.Email, FullName: identity.Name, GoogleSubject: &identity.Subject, Roles: pq.StringArray{"user"}, Active: true, EmailVerified: true}
 	return f.user, nil
 }
 func (f *fakeUsers) FindByEmail(_ context.Context, email string) (domain.User, error) {
@@ -54,6 +54,38 @@ func (f *fakeUsers) ConsumeRefresh(_ context.Context, hash string) (domain.User,
 	}
 	delete(f.refresh, hash)
 	return f.FindByID(context.Background(), id)
+}
+func (f *fakeUsers) Delete(_ context.Context, id string) error {
+	if f.user.ID != id{
+		return domain.ErrNotFound
+	}
+	f.user = domain.User{}
+	f.refresh = map[string]string{}
+	return nil
+}
+
+func (f *fakeUsers) SetActive(_ context.Context, id string, active bool) (domain.User, error){
+	if f.user.ID != id{
+		return domain.User{}, domain.ErrNotFound
+	}
+	f.user.Active = active
+	if !active{
+		f.refresh = map[string]string{}
+	}
+	return f.user, nil
+}
+
+func (f *fakeUsers) List(_ context.Context, limit, offset int, activeOnly *bool) ([]domain.User, int64, error){
+	if f.user.ID == "" {
+		return nil, 0, nil
+	}
+	if activeOnly != nil && f.user.Active != *activeOnly{
+		return nil, 0,nil
+	}
+	if offset > 0{
+		return nil, 1, nil
+	}
+	return []domain.User{f.user}, 1, nil
 }
 
 func TestServiceRegistersLogsInAndRotatesRefresh(t *testing.T) {

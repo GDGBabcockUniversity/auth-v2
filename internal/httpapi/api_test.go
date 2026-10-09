@@ -12,7 +12,12 @@ func TestUnmatchedRouteReturnsNotFound(t *testing.T) {
 	if err != nil {
 		t.Fatalf("send request: %v", err)
 	}
-	defer response.Body.Close()
+
+	defer func(){
+		if err = response.Body.Close(); err != nil{
+			return
+		}
+	}()
 
 	if response.StatusCode != http.StatusNotFound {
 		t.Errorf("status = %d, want %d", response.StatusCode, http.StatusNotFound)

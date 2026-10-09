@@ -7,6 +7,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/GDGBabcockUniversity/auth-v2/internal/auth"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
@@ -48,6 +49,12 @@ func (a API) App() *fiber.App {
 	g.Post("/logout", a.requireAuth, func(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNoContent)
 	})
+
+	admin := app.Group("/admin", a.requireAuth, a.requireAdmin)
+	admin.Get("/users", a.listUsers)
+	admin.Get("/users/:id", a.getUser)
+	admin.Patch("/users/:id/active", a.setUserActive)
+	admin.Delete("/users/:id", a.deleteUser)
 
 	return app
 }
@@ -203,4 +210,103 @@ func (a API) errorHandler(c fiber.Ctx, err error) error {
 	return c.Status(status).JSON(dto.ErrorResponse{
 		Message: msg,
 	})
+}
+
+func (a API) requireAdmin(c fiber.Ctx) error {
+	claims, ok := c.Locals("claims").(*auth.Claims)
+	if !ok {
+		return domain.ErrUnauthorized
+	}
+	for _, r := range claims.Roles {
+		if strings.EqualFold(r, "ADMIN") {
+			return c.Next()
+		}
+	}
+	return domain.ErrForbidden
+}
+
+func (a API) listUsers(c fiber.Ctx) error {
+	var q dto.ListUsersQuery
+	if e := c.Bind().Query(&q); e != nil {
+		return domain.FieldError{Field: "query", Message: "invalid"}
+	}
+	users, total, e := a.Auth.ListUsers(context.Background(), q.Limit, q.Offset, q.Active)
+	if e != nil {
+		return e
+	}
+	out := make([]dto.AdminUserResponse, 0, len(users))
+	for _, u := range users {
+		out = append(out, adminUser(u))
+	}
+	return c.JSON(dto.ListUsersResponse{
+		Success: true,
+		Users:   out,
+		Total:   total,
+		Limit:   q.Limit,
+		Offset:  q.Offset,
+	})
+}
+
+func (a API) getUser(c fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return domain.FieldError{Field: "id", Message: "is required"}
+	}
+	u, e := a.Auth.UserRepo.FindByID(context.Background(), id)
+	if e != nil {
+		return e
+	}
+	return c.JSON(fiber.Map{"success": true, "user": adminUser(u)})
+}
+
+func (a API) setUserActive(c fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return domain.FieldError{Field: "id", Message: "is required"}
+	}
+	var in dto.SetActiveRequest
+	if e := c.Bind().Body(&in); e != nil {
+		return domain.FieldError{Field: "body", Message: "must be valid JSON"}
+	}
+
+	claims := c.Locals("claims").(*auth.Claims)
+	if claims.Subject == id && !in.Active {
+		return domain.FieldError{Field: "id", Message: "cannot deactivate your own account"}
+	}
+
+	u, e := a.Auth.SetUserActive(context.Background(), id, in.Active)
+	if e != nil {
+		return e
+	}
+	return c.JSON(fiber.Map{"success": true, "user": adminUser(u)})
+}
+
+func (a API) deleteUser(c fiber.Ctx) error {
+	id := c.Params("id")
+	if id == "" {
+		return domain.FieldError{Field: "id", Message: "is required"}
+	}
+
+	claims := c.Locals("claims").(*auth.Claims)
+	if claims.Subject == id {
+		return domain.FieldError{Field: "id", Message: "cannot delete your own account"}
+	}
+
+	if e := a.Auth.DeleteUser(context.Background(), id); e != nil {
+		return e
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func adminUser(u domain.User) dto.AdminUserResponse {
+	return dto.AdminUserResponse{
+		ID:            u.ID,
+		Email:         u.Email,
+		FullName:      u.FullName,
+		Roles:         []string(u.Roles),
+		Active:        u.Active,
+		EmailVerified: u.EmailVerified,
+		CreatedAt:     u.CreatedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:     u.UpdatedAt.UTC().Format(time.RFC3339),
+	}
 }

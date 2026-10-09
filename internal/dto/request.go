@@ -14,3 +14,13 @@ type LoginRequest struct {
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
+
+type ListUsersQuery struct {
+	Limit  int   `query:"limit"`
+	Offset int   `query:"offset"`
+	Active *bool `query:"active"`
+}
+
+type SetActiveRequest struct {
+	Active bool `json:"active"`
+}

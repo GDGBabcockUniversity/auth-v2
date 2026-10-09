@@ -24,3 +24,22 @@ type SessionResponse struct {
 	User    UserResponse  `json:"user"`
 	Tokens  TokenResponse `json:"tokens"`
 }
+
+type AdminUserResponse struct {
+	ID            string   `json:"id"`
+	Email         string   `json:"email"`
+	FullName      string   `json:"full_name"`
+	Roles         []string `json:"roles"`
+	Active        bool     `json:"active"`
+	EmailVerified bool     `json:"email_verified"`
+	CreatedAt     string   `json:"created_at"`
+	UpdatedAt     string   `json:"updated_at"`
+}
+
+type ListUsersResponse struct {
+	Success bool                `json:"success"`
+	Users   []AdminUserResponse `json:"users"`
+	Total   int64               `json:"total"`
+	Limit   int                 `json:"limit"`
+	Offset  int                 `json:"offset"`
+}

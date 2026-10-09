@@ -52,7 +52,7 @@ func (r PostgresUserRepository) FindOrCreateGoogleUser(ctx context.Context, iden
 		user = domain.User{
 			Email:          identity.Email,
 			FullName:       identity.Name,
-			GoogleSubject:  identity.Subject,
+			GoogleSubject:  &identity.Subject,
 			Roles:          []string{"USER"},
 			Active:         true,
 			EmailVerified:  true,
@@ -116,3 +116,79 @@ func (r PostgresUserRepository) ConsumeRefresh(ctx context.Context, hash string)
 	}
 	return user, err
 }
+
+func (r PostgresUserRepository) List(ctx context.Context, limit, offset int, activeOnly *bool) ([]domain.User, int64, error){
+
+	if limit <= 0 || limit > 100{
+		limit = 20
+	}
+
+	if offset < 0{
+		offset = 0
+	}
+
+	q := r.DB.WithContext(ctx).Model(&domain.User{})
+	if activeOnly != nil{
+		q = q.Where("is_active = ?", *activeOnly)
+	}
+
+	var users []domain.User
+	var total int64
+
+	if err := q.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	err := q.
+		Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&users).Error
+	if err != nil{
+		return nil, 0, err
+	}
+	
+	return users, total, nil
+}
+
+func (r PostgresUserRepository) SetActive(ctx context.Context, id string, active bool) (domain.User, error) {
+	var user domain.User
+	err := r.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error{
+		res := tx.Model(&domain.User{}).
+				Where("id = ?", id).
+				Updates(map[string]any{
+					"is_active": active,
+					"updated_at": time.Now().UTC(),
+				})
+
+				if res.Error != nil{
+					return res.Error
+				}
+				if res.RowsAffected == 0{
+					return domain.ErrNotFound
+				}
+
+				if !active {
+					now := time.Now().UTC()
+					if err := tx.Model(&domain.RefreshToken{}).
+								Where("user_id = ? AND revoked_at IS NULL", id).
+								Update("revoked_at", now).Error; err != nil{
+									return err
+								}
+				}
+
+				return tx.Where("id = ?", id).First(&user).Error
+	})
+	return user, err
+}
+func (r PostgresUserRepository) Delete(ctx context.Context, id string) error {
+	res := r.DB.WithContext(ctx).Delete(&domain.User{}, "id = ?", id)
+	if res.Error != nil{
+		return res.Error
+	}
+	if res.RowsAffected == 0{
+		return domain.ErrNotFound
+	}
+
+	return nil
+} 

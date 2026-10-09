@@ -45,7 +45,7 @@ func (p *GoogleProvider) IdentityFromCode(ctx context.Context, code string) (dom
 	raw, ok := token.Extra("id_token").(string)
 
 	if !ok || raw == "" {
-		return domain.GoogleIdentity{}, fmt.Errorf("Google response did not include an ID token")
+		return domain.GoogleIdentity{}, fmt.Errorf("google response did not include an ID token")
 	}
 
 	payload, err := idtoken.Validate(ctx, raw, p.clientID)
@@ -60,7 +60,7 @@ func (p *GoogleProvider) IdentityFromCode(ctx context.Context, code string) (dom
 	picture, _ := payload.Claims["picture"].(string)
 
 	if payload.Subject == "" || !verified || strings.TrimSpace(email) == "" {
-		return domain.GoogleIdentity{}, fmt.Errorf("Google account must have a verified email")
+		return domain.GoogleIdentity{}, fmt.Errorf("google account must have a verified email")
 	}
 
 	return domain.GoogleIdentity{Subject: payload.Subject, Email: email, Name: name, Picture: picture}, nil

@@ -113,3 +113,15 @@ func hash(v string) string {
 func NewRefreshToken() string {
 	return uuid.NewString() + uuid.NewString()
 }
+
+func (s Service) ListUsers(ctx context.Context, limit, offset int, activeOnly *bool) ([]domain.User, int64, error) {
+	return s.UserRepo.List(ctx, limit, offset, activeOnly)
+}
+
+func (s Service) SetUserActive(ctx context.Context, id string, active bool) (domain.User, error) {
+	return s.UserRepo.SetActive(ctx, id, active)
+}
+
+func (s Service) DeleteUser(ctx context.Context, id string) error {
+	return s.UserRepo.Delete(ctx, id)
+}
