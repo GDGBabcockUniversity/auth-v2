@@ -1,9 +1,0 @@
-auth.gdgbabcock.com {
-    @goAuth path /auth/* /admin/users /admin/users/*
-    handle @goAuth {
-        reverse_proxy go-auth-api:8080
-    }
-    handle {
-        reverse_proxy legacy-express:3000
-    }
-}
