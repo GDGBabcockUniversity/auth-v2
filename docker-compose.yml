@@ -18,12 +18,15 @@ services:
       retries: 10
   api:
     build: .
-    env_file: .env.go-auth
+    env_file: .env
     environment:
       DATABASE_URL: postgres://auth:local-only-auth-password@db:5432/legacy_auth?sslmode=disable
       HTTP_PORT: "8080"
+      FIREBASE_SERVICE_ACCOUNT_PATH: /run/secrets/firebase-service-account.json
+    volumes:
+      - ./.secrets:/run/secrets:ro
     ports:
-      - "127.0.0.1:18080:8080"
+      - "8080:8080"
     depends_on:
       db:
         condition: service_healthy

@@ -5,10 +5,15 @@ This Fiber service is the authentication portion of the legacy `../auth` Express
 ## Run locally
 
 1. Configure PostgreSQL with the four auth tables in [`database/auth.sql`](database/auth.sql), and set `DATABASE_URL` to its connection string.
-2. Copy `.env.go-auth.example` to `.env.go-auth`. Configure `FIREBASE_PROJECT_ID`, one Firebase Admin credential source (service-account JSON, service-account file, or Application Default Credentials), and a random `JWT_SECRET` of at least 32 characters. Use the same `JWT_SECRET` as the legacy Express service while both must accept each other's platform tokens.
+2. Copy `.env.example` to `.env` if you do not already have a local `.env`. Set the real `FIREBASE_PROJECT_ID`, a random `JWT_SECRET` of at least 32 characters, and Firebase Admin credentials. Use the same `JWT_SECRET` as the legacy Express service while both must accept each other's platform tokens.
 3. Export those variables and run `go run ./cmd/auth`, or build with `go build ./cmd/auth`. The service listens on `HTTP_PORT` (default `8080`).
 
-For a disposable local database, `docker compose -f docker-compose.go-auth.yml up -d db` starts PostgreSQL and initializes only the auth tables. The Compose API container requires working Firebase credentials in `.env.go-auth`; `FIREBASE_SERVICE_ACCOUNT_PATH` must refer to a path inside the container if that method is used. The local API host port is `18080` to avoid the Keycloak pilot on `8080`.
+For Docker, `docker compose up --build api` starts the disposable auth database and API on `localhost:8080`. Compose reads `.env`. Provide Firebase Admin credentials in one of these ways:
+
+- Set `FIREBASE_SERVICE_ACCOUNT` to the service-account JSON on one line in `.env`.
+- Put the JSON file at `.secrets/firebase-service-account.json`. Compose mounts that directory read-only and sets `FIREBASE_SERVICE_ACCOUNT_PATH` inside the container. The file must be readable by the container's nonroot user.
+
+Set `FIREBASE_PROJECT_ID` to the `project_id` from that service account. A host-side path in `FIREBASE_SERVICE_ACCOUNT_PATH` is not automatically visible inside Docker. The `.env` and `.secrets` paths are ignored by Git and excluded from the image build context. For a database-only start, run `docker compose up -d db`.
 
 ## Endpoints
 
@@ -18,4 +23,4 @@ The Go API intentionally does not serve `/events`, `/radar`, `/team`, or `/analy
 
 ## Code layout
 
-`internal/domain` owns the auth models and repository interfaces. `internal/auth` implements login, token, profile, and admin rules against those interfaces. `internal/repository` is the GORM/PostgreSQL adapter. `internal/httpapi/api.go` registers Fiber routes, `handler.go` handles requests, and `internal/httpapi/dto/request.go` and `response.go` define the JSON contract.
+`internal/domain` owns the auth models and repository interfaces. `internal/auth` implements login, token, profile, and admin rules against those interfaces. `internal/infrastructure/firebase` verifies Firebase ID tokens. `internal/infrastructure/postgres` opens the database and keeps user, refresh-token, and audit repository methods in separate files. `internal/httpapi/api.go` registers Fiber routes, `handler.go` handles requests, and `internal/httpapi/dto/request.go` and `response.go` define the JSON contract.

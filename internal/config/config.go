@@ -31,7 +31,7 @@ func Load() (Config, error) {
 	if c.FirebaseProjectID == "" || c.FirebaseProjectID == "your-firebase-project-id" {
 		return c, errors.New("FIREBASE_PROJECT_ID must be set to your Firebase project ID")
 	}
-	if len(c.JWTSecret) < 32 || c.JWTSecret == "replace-with-a-random-secret-at-least-32-characters" {
+	if len(c.JWTSecret) < 32 || strings.HasPrefix(c.JWTSecret, "replace-with-") {
 		return c, errors.New("JWT_SECRET must be a non-placeholder secret of at least 32 characters")
 	}
 	var err error
