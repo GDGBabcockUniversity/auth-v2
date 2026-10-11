@@ -2,3 +2,5 @@
 .air.toml
 bin/
 coverage.out
+
+.env.go-auth

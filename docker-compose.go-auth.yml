@@ -1,0 +1,31 @@
+name: go-auth-dev
+services:
+  db:
+    image: postgres:17-alpine
+    ports:
+      - "127.0.0.1:15432:5432"
+    environment:
+      POSTGRES_DB: legacy_auth
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: local-only-auth-password
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+      - ./database/auth.sql:/docker-entrypoint-initdb.d/001-auth.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d legacy_auth"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  api:
+    build: .
+    env_file: .env.go-auth
+    environment:
+      DATABASE_URL: postgres://auth:local-only-auth-password@db:5432/legacy_auth?sslmode=disable
+      HTTP_PORT: "8080"
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  auth_db_data:

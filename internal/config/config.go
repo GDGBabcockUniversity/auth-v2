@@ -1,92 +1,51 @@
 package config
 
 import (
-	"fmt"
-	"net/url"
+	"errors"
 	"os"
 	"strings"
 	"time"
 )
 
 type Config struct {
-	Environment        string
-	Port               string
-	DatabaseURL        string
-	JWTIssuer          string
-	JWTSecret          string
-	GoogleClientID     string
-	GoogleClientSecret string
-	GoogleRedirectURL  string
-	GoogleReturnURL    string
-	CORSOrigins        []string
-	JWTAudiences       []string
-	AccessTTL          time.Duration
-	RefreshTTL         time.Duration
+	Port, DatabaseURL, FirebaseProjectID, FirebaseServiceAccount, FirebaseServiceAccountPath, JWTSecret string
+	CORSOrigins                                                                                         []string
+	AccessTTL, RefreshTTL                                                                               time.Duration
 }
 
 func Load() (Config, error) {
-	c := Config{
-		Environment:        getEnv("APP_ENV", "development"),
-		Port:               getEnv("HTTP_PORT", "8080"),
-		DatabaseURL:        getEnv("DATABASE_URL", ""),
-		JWTIssuer:          getEnv("JWT_ISSUER", "https://auth.gdgbabcock.com"),
-		JWTSecret:          getEnv("JWT_HMAC_SECRET", ""),
-		CORSOrigins:        list("CORS_ORIGINS"),
-		JWTAudiences:       list("JWT_AUDIENCES"),
-		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
-		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
-		GoogleRedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
-		GoogleReturnURL:    getEnv("GOOGLE_RETURN_URL", ""),
+	c := Config{Port: env("HTTP_PORT", "8080"), DatabaseURL: os.Getenv("DATABASE_URL"), FirebaseProjectID: os.Getenv("FIREBASE_PROJECT_ID"), FirebaseServiceAccount: os.Getenv("FIREBASE_SERVICE_ACCOUNT"), FirebaseServiceAccountPath: os.Getenv("FIREBASE_SERVICE_ACCOUNT_PATH"), JWTSecret: os.Getenv("JWT_SECRET"), CORSOrigins: split(os.Getenv("CORS_ORIGINS"))}
+	if c.DatabaseURL == "" || c.FirebaseProjectID == "" || len(c.JWTSecret) < 32 {
+		return c, errors.New("DATABASE_URL, FIREBASE_PROJECT_ID, and JWT_SECRET (32+ characters) are required")
 	}
-
 	var err error
-	if c.AccessTTL, err = time.ParseDuration(getEnv("JWT_ACCESS_TTL", "15m")); err != nil {
-		return c, fmt.Errorf("JWT_ACCESS_TTL: %w", err)
+	if c.AccessTTL, err = time.ParseDuration(env("JWT_ACCESS_TTL", "24h")); err != nil || c.AccessTTL <= 0 {
+		return c, errors.New("invalid JWT_ACCESS_TTL")
 	}
-	if c.RefreshTTL, err = time.ParseDuration(getEnv("JWT_REFRESH_TTL", "168h")); err != nil {
-		return c, fmt.Errorf("JWT_REFRESH_TTL: %w", err)
+	if c.RefreshTTL, err = time.ParseDuration(env("JWT_REFRESH_TTL", "168h")); err != nil || c.RefreshTTL <= 0 {
+		return c, errors.New("invalid JWT_REFRESH_TTL")
 	}
-	if c.DatabaseURL == "" {
-		return c, fmt.Errorf("DATABASE_URL is required")
+	if len(c.CORSOrigins) == 0 {
+		return c, errors.New("CORS_ORIGINS is required")
 	}
-	if len(c.JWTSecret) < 32 {
-		return c, fmt.Errorf("JWT_HMAC_SECRET must be at least 32 characters")
-	}
-	if len(c.JWTAudiences) == 0 {
-		return c, fmt.Errorf("JWT_AUDIENCES is required")
-	}
-	googleValues := []string{c.GoogleClientID, c.GoogleClientSecret, c.GoogleRedirectURL}
-	configuredGoogleValues := 0
-	for _, value := range googleValues {
-		if value != "" {
-			configuredGoogleValues++
-		}
-	}
-	if configuredGoogleValues != 0 && configuredGoogleValues != len(googleValues) {
-		return c, fmt.Errorf("GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URL must be set together")
-	}
-	if c.GoogleReturnURL != "" && c.GoogleRedirectURL == "" {
-		return c, fmt.Errorf("GOOGLE_RETURN_URL requires Google OAuth to be configured")
-	}
-	if c.GoogleReturnURL != "" {
-		returnURL, err := url.Parse(c.GoogleReturnURL)
-		if err != nil || !returnURL.IsAbs() || (returnURL.Scheme != "https" && returnURL.Scheme != "http") || returnURL.Host == "" {
-			return c, fmt.Errorf("GOOGLE_RETURN_URL must be an absolute HTTP(S) URL")
+	for _, origin := range c.CORSOrigins {
+		if origin == "*" {
+			return c, errors.New("CORS_ORIGINS must list explicit origins")
 		}
 	}
 	return c, nil
 }
-
-func getEnv(value, defaultValue string) string {
-	if v := os.Getenv(value); v != "" {
+func env(key, def string) string {
+	if v := os.Getenv(key); v != "" {
 		return v
 	}
-	return defaultValue
+	return def
 }
-func list(k string) []string {
+func split(s string) []string {
 	var out []string
-	for v := range strings.SplitSeq(os.Getenv(k), ",") {
-		if v = strings.TrimSpace(v); v != "" {
+	for v := range strings.SplitSeq(s, ",") {
+		v = strings.TrimSpace(v)
+		if v != "" {
 			out = append(out, v)
 		}
 	}

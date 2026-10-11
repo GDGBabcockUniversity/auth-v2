@@ -1,53 +1,17 @@
-# auth-v2
+# GDG Babcock Go auth service
 
-Authentication service for the GDG Babcock platform, built with Go and Fiber. It provides email/password and Google sign-in, then issues JWTs for platform services using URI-based audiences.
+This Fiber service is the authentication portion of the legacy `../auth` Express application. Firebase Authentication handles sign-in. The client sends a Firebase ID token to `POST /auth/login`; this service verifies it with Firebase Admin, preserves the user's existing PostgreSQL UUID, and issues platform JWTs. GORM accesses only `users`, `refresh_tokens`, `user_sessions`, and `auth_audit_log`. No schema changes run at startup.
 
-## Setup
+## Run locally
 
-### Requirements
+1. Configure PostgreSQL with the four auth tables in [`database/auth.sql`](database/auth.sql), and set `DATABASE_URL` to its connection string.
+2. Copy `.env.go-auth.example` to `.env.go-auth`. Configure `FIREBASE_PROJECT_ID`, one Firebase Admin credential source (service-account JSON, service-account file, or Application Default Credentials), and a random `JWT_SECRET` of at least 32 characters. Use the same `JWT_SECRET` as the legacy Express service while both must accept each other's platform tokens.
+3. Export those variables and run `go run ./cmd/auth`, or build with `go build ./cmd/auth`. The service listens on `HTTP_PORT` (default `8080`).
 
-- Docker and Docker Compose
-- Go 1.27+ (only needed to run the API or tests outside Docker)
+For a disposable local database, `docker compose -f docker-compose.go-auth.yml up -d db` starts PostgreSQL and initializes only the auth tables. The Compose API container requires working Firebase credentials in `.env.go-auth`; `FIREBASE_SERVICE_ACCOUNT_PATH` must refer to a path inside the container if that method is used. The local API host port is `18080` to avoid the Keycloak pilot on `8080`.
 
-### Configure and run locally
+## Endpoints
 
-1. Create your local environment file:
+`POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`, `PUT /auth/profile`, `GET /auth/verify`, `GET /admin/users`, `PUT /admin/users/:id`, and `GET /health`. See [the API contract](docs/go-auth-contract.md) for the legacy response shape and [the deployment guide](docs/go-auth-operations.md) for cutover constraints.
 
-   ```sh
-   cp .env.example .env
-   ```
-
-2. Set a secure `JWT_HMAC_SECRET` in `.env` (at least 32 characters). Review `JWT_AUDIENCES` and, if needed, add your Google OAuth credentials.
-
-3. Start PostgreSQL, Mailpit, and the API:
-
-   ```sh
-   docker compose up --build
-   ```
-
-4. On a new database, apply the migrations from another terminal:
-
-   ```sh
-   docker compose run --rm api migrate
-   ```
-
-The API is available at `http://localhost:8080`, the health check is at `http://localhost:8080/health`, and Mailpit is available at `http://localhost:8025`.
-
-To run without Docker, make sure `DATABASE_URL` points to a running PostgreSQL instance, then use `go run ./cmd/api`. Run the test suite with `go test ./...`.
-
-## Features
-
-### Done
-
-- Email/password registration and login
-- JWT access tokens with refresh-token rotation
-- Authenticated user profile and token validation endpoints
-- Google OAuth sign-in, including verified-email account linking
-- Role claims in JWTs
-- PostgreSQL-backed users and refresh tokens
-
-### Upcoming
-
-- Admin dashboard UI for user and account administration
-- Password-reset flow for email/password accounts
-- Email verification for email/password registration
+The Go API intentionally does not serve `/events`, `/radar`, `/team`, or `/analytics`. Existing website profile enrichment from those tables needs another owner before `/auth/me` can be switched without changing the website UI.

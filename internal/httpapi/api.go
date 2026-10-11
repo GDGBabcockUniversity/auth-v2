@@ -2,254 +2,203 @@ package httpapi
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
-	"log/slog"
-	"net/url"
+	"net"
+	"strconv"
 	"strings"
 
 	"github.com/GDGBabcockUniversity/auth-v2/internal/auth"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
-	"github.com/GDGBabcockUniversity/auth-v2/internal/dto"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/recover"
-	"github.com/gofiber/fiber/v3/middleware/requestid"
 )
 
 type API struct {
-	Auth            auth.Service
-	Audience        string
-	Log             *slog.Logger
-	SecureCookies   bool
-	GoogleReturnURL string
+	Service auth.Service
+	Origins []string
 }
 
 func (a API) App() *fiber.App {
-	app := fiber.New(fiber.Config{
-		ErrorHandler: a.errorHandler,
-	})
-
-	app.Use(requestid.New())
+	app := fiber.New(fiber.Config{BodyLimit: 1 << 20, ErrorHandler: func(c fiber.Ctx, e error) error {
+		status := fiber.StatusInternalServerError
+		message := "Internal server error"
+		switch {
+		case errors.Is(e, auth.ErrUnauthorized):
+			status = 401
+			message = "Authentication required"
+		case errors.Is(e, auth.ErrInactive):
+			status = 403
+			message = "Account is inactive"
+		case errors.Is(e, auth.ErrConflict):
+			status = 409
+			message = "Account needs identity linking"
+		case errors.Is(e, auth.ErrBadInput):
+			status = 400
+			message = "Invalid request"
+		case errors.Is(e, domain.ErrNotFound):
+			status = 404
+			message = "User not found"
+		}
+		return c.Status(status).JSON(fiber.Map{"success": false, "error": message})
+	}})
 	app.Use(recover.New())
-
-	app.Get("/health", func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{"status": "healthy"})
-	})
-
-	g := app.Group("/auth")
-	g.Post("/register", a.register)
-	g.Post("/login", a.login)
-	g.Get("/google", a.googleStart)
-	g.Get("/google/callback", a.googleCallback)
-	g.Post("/exchange", a.exchangeGoogleHandoff)
-	g.Post("/refresh", a.refresh)
-	g.Get("/me", a.requireAuth, a.me)
-	g.Get("/verify", a.requireAuth, func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{"success": true, "valid": true})
-	})
-	g.Post("/logout", a.requireAuth, func(c fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusNoContent)
-	})
-
+	app.Use(cors.New(cors.Config{AllowOrigins: a.Origins, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"}, AllowMethods: []string{"GET", "POST", "PUT", "OPTIONS"}}))
+	app.Get("/health", func(c fiber.Ctx) error { return c.JSON(fiber.Map{"status": "healthy"}) })
+	app.Post("/auth/login", a.login)
+	app.Post("/auth/refresh", a.refresh)
+	app.Post("/auth/logout", a.authorize, a.logout)
+	app.Get("/auth/me", a.authorize, a.me)
+	app.Put("/auth/profile", a.authorize, a.profile)
+	app.Get("/auth/verify", a.authorize, a.verify)
+	app.Get("/admin/users", a.authorize, a.requireAdmin, a.adminList)
+	app.Put("/admin/users/:id", a.authorize, a.requireAdmin, a.adminUpdate)
 	return app
 }
-
-const (
-	googleStateCookie       = "google_oauth_state"
-	googleReturnStateCookie = "google_return_state"
-)
-
-func (a API) googleStart(c fiber.Ctx) error {
-	if a.Auth.Google == nil {
-		return domain.ErrNotFound
+func parse(c fiber.Ctx, dst any) error {
+	if err := c.Bind().Body(dst); err != nil {
+		return auth.ErrBadInput
 	}
-	state, e := oauthState()
-	if e != nil {
-		return e
-	}
-	returnState := c.Query("state")
-	if returnState != "" {
-		raw, decodeErr := base64.RawURLEncoding.DecodeString(returnState)
-		if decodeErr != nil || len(raw) < 24 || len(raw) > 64 {
-			return domain.FieldError{Field: "state", Message: "is invalid"}
-		}
-		c.Cookie(&fiber.Cookie{
-			Name: googleReturnStateCookie, Value: returnState,
-			Path: "/auth/google", MaxAge: 600, HTTPOnly: true,
-			Secure: a.SecureCookies, SameSite: fiber.CookieSameSiteLaxMode,
-		})
-	}
-	c.Cookie(&fiber.Cookie{
-		Name:     googleStateCookie,
-		Value:    state,
-		Path:     "/auth/google",
-		MaxAge:   600,
-		HTTPOnly: true,
-		Secure:   a.SecureCookies,
-		SameSite: fiber.CookieSameSiteLaxMode,
-	})
-	return c.Redirect().To(a.Auth.Google.AuthorizationURL(state))
+	return nil
 }
-
-func (a API) googleCallback(c fiber.Ctx) error {
-	state := c.Query("state")
-	if state == "" || state != c.Cookies(googleStateCookie) {
-		return domain.ErrUnauthorized
+func reqContext(c fiber.Ctx) context.Context { return c.Context() }
+func optional(s string) *string {
+	if s == "" {
+		return nil
 	}
-	returnState := c.Cookies(googleReturnStateCookie)
-	c.ClearCookie(googleStateCookie)
-	c.ClearCookie(googleReturnStateCookie)
-
-	if c.Query("error") != "" || c.Query("code") == "" {
-		return domain.ErrUnauthorized
-	}
-	if a.GoogleReturnURL != "" && returnState != "" {
-		handoff, err := a.Auth.CreateGoogleHandoff(context.Background(), c.Query("code"))
-		if err != nil {
-			return err
-		}
-		redirect, err := url.Parse(a.GoogleReturnURL)
-		if err != nil || !redirect.IsAbs() || (redirect.Scheme != "https" && redirect.Scheme != "http") || redirect.Host == "" {
-			return domain.ErrValidation
-		}
-		query := redirect.Query()
-		query.Set("code", handoff)
-		query.Set("state", returnState)
-		redirect.RawQuery = query.Encode()
-		c.Set("Cache-Control", "no-store")
-		c.Set("Referrer-Policy", "no-referrer")
-		return c.Redirect().To(redirect.String())
-	}
-	s, e := a.Auth.LoginWithGoogleCode(context.Background(), c.Query("code"))
-	if e != nil {
-		return e
-	}
-	return c.JSON(sessionResponse(s))
-}
-
-func (a API) exchangeGoogleHandoff(c fiber.Ctx) error {
-	var in dto.GoogleHandoffRequest
-	if e := c.Bind().Body(&in); e != nil || in.Code == "" {
-		return domain.FieldError{Field: "code", Message: "is required"}
-	}
-	s, e := a.Auth.ExchangeGoogleHandoff(context.Background(), in.Code)
-	if e != nil {
-		return e
-	}
-	return c.JSON(sessionResponse(s))
-}
-
-func oauthState() (string, error) {
-	b := make([]byte, 32)
-	if _, e := rand.Read(b); e != nil {
-		return "", e
-	}
-	return base64.RawURLEncoding.EncodeToString(b), nil
-}
-
-func (a API) register(c fiber.Ctx) error {
-	var in dto.RegisterRequest
-	if e := c.Bind().Body(&in); e != nil {
-		return domain.FieldError{Field: "body", Message: "must be valid JSON"}
-	}
-	s, e := a.Auth.Register(context.Background(), in.Email, in.FullName, in.Password)
-	if e != nil {
-		return e
-	}
-	return c.Status(fiber.StatusCreated).JSON(sessionResponse(s))
+	return &s
 }
 func (a API) login(c fiber.Ctx) error {
-	var in dto.LoginRequest
-	if e := c.Bind().Body(&in); e != nil {
-		return domain.FieldError{Field: "body", Message: "must be valid JSON"}
+	var body struct {
+		FirebaseToken string `json:"firebase_token"`
 	}
-	s, e := a.Auth.Login(context.Background(), in.Email, in.Password)
-	if e != nil {
-		return e
+	if err := parse(c, &body); err != nil {
+		return err
 	}
-	return c.JSON(sessionResponse(s))
+	if body.FirebaseToken == "" {
+		return auth.ErrBadInput
+	}
+	ip := net.ParseIP(c.IP())
+	var addr *string
+	if ip != nil {
+		v := ip.String()
+		addr = &v
+	}
+	user, tokens, err := a.Service.Login(reqContext(c), body.FirebaseToken, addr, optional(c.Get("User-Agent")))
+	if err != nil {
+		return err
+	}
+	return c.JSON(fiber.Map{"success": true, "user": fiber.Map{"id": user.ID, "email": user.Email, "full_name": user.FullName, "avatar_url": user.AvatarURL, "roles": user.Roles, "teams": user.Teams}, "tokens": tokens})
 }
 func (a API) refresh(c fiber.Ctx) error {
-	var in dto.RefreshRequest
-	if e := c.Bind().Body(&in); e != nil {
-		return domain.FieldError{Field: "body", Message: "must be valid JSON"}
+	var body struct {
+		RefreshToken string `json:"refresh_token"`
 	}
-	if in.RefreshToken == "" {
-		return domain.FieldError{Field: "refresh_token", Message: "is required"}
+	if err := parse(c, &body); err != nil {
+		return err
 	}
-	s, e := a.Auth.RefreshSession(context.Background(), in.RefreshToken)
-	if e != nil {
-		return e
+	if body.RefreshToken == "" {
+		return auth.ErrBadInput
 	}
-	return c.JSON(sessionResponse(s))
+	tokens, err := a.Service.Refresh(reqContext(c), body.RefreshToken)
+	if err != nil {
+		return err
+	}
+	return c.JSON(fiber.Map{"success": true, "tokens": tokens})
 }
-func (a API) requireAuth(c fiber.Ctx) error {
-	p := strings.Fields(c.Get("Authorization"))
-	if len(p) != 2 || !strings.EqualFold(p[0], "bearer") {
-		return domain.ErrUnauthorized
+func (a API) authorize(c fiber.Ctx) error {
+	h := strings.Fields(c.Get("Authorization"))
+	if len(h) != 2 || !strings.EqualFold(h[0], "Bearer") {
+		return auth.ErrUnauthorized
 	}
-	claims, e := a.Auth.Access.Verify(p[1], a.Audience, "access")
-	if e != nil {
-		return e
+	user, claims, err := a.Service.AccessUser(reqContext(c), h[1])
+	if err != nil {
+		return err
 	}
+	c.Locals("user", user)
+	claims.Email = user.Email
+	claims.FullName = user.FullName
+	claims.Roles = []string(user.Roles)
+	claims.Teams = []string(user.Teams)
 	c.Locals("claims", claims)
 	return c.Next()
 }
+func current(c fiber.Ctx) domain.User { return c.Locals("user").(domain.User) }
+func (a API) logout(c fiber.Ctx) error {
+	var body struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	if len(c.Body()) > 0 {
+		if err := parse(c, &body); err != nil {
+			return err
+		}
+	}
+	if err := a.Service.Logout(reqContext(c), current(c).ID, body.RefreshToken); err != nil {
+		return err
+	}
+	return c.JSON(fiber.Map{"success": true, "message": "Logged out successfully"})
+}
+func profileUser(u domain.User) fiber.Map {
+	return fiber.Map{"id": u.ID, "firebase_uid": u.FirebaseUID, "email": u.Email, "full_name": u.FullName, "whatsapp_number": u.WhatsAppNumber, "avatar_url": u.AvatarURL, "email_verified": u.EmailVerified, "gender": u.Gender, "birthday": u.Birthday, "student_status": u.StudentStatus, "matric_no": u.MatricNo, "department": u.Department, "faculty": u.Faculty, "primary_track": u.PrimaryTrack, "secondary_track": u.SecondaryTrack, "primary_skill_level": u.PrimarySkillLevel, "secondary_skill_level": u.SecondarySkillLevel, "teams": u.Teams, "roles": u.Roles, "tos_agreed": u.TOSAgreed, "tos_agreed_at": u.TOSAgreedAt, "tos_version": u.TOSVersion, "created_at": u.CreatedAt, "updated_at": u.UpdatedAt, "last_login_at": u.LastLoginAt, "is_active": u.IsActive}
+}
 func (a API) me(c fiber.Ctx) error {
-	claims := c.Locals("claims").(*auth.Claims)
-	u, e := a.Auth.UserRepo.FindByID(context.Background(), claims.Subject)
-	if e != nil {
-		return e
-	}
-	return c.JSON(fiber.Map{"success": true, "user": publicUser(u)})
+	return c.JSON(fiber.Map{"success": true, "user": profileUser(current(c))})
 }
-func publicUser(u domain.User) dto.UserResponse {
-	return dto.UserResponse{
-		ID:            u.ID,
-		Email:         u.Email,
-		FullName:      u.FullName,
-		Roles:         []string(u.Roles),
-		EmailVerified: u.EmailVerified,
-	}
+func (a API) verify(c fiber.Ctx) error {
+	return c.JSON(fiber.Map{"success": true, "valid": true, "user": c.Locals("claims")})
 }
-func sessionResponse(s auth.Session) dto.SessionResponse {
-	return dto.SessionResponse{
-		Success: true,
-		User:    publicUser(s.User),
-		Tokens: dto.TokenResponse{
-			AccessToken:  s.AccessToken,
-			RefreshToken: s.RefreshToken,
-			TokenType:    s.TokenType,
-			ExpiresIn:    s.ExpiresIn,
-		},
+func (a API) profile(c fiber.Ctx) error {
+	var body map[string]any
+	if err := parse(c, &body); err != nil {
+		return err
 	}
+	u, err := a.Service.UpdateProfile(reqContext(c), current(c).ID, body)
+	if err != nil {
+		return err
+	}
+	return c.JSON(fiber.Map{"success": true, "user": profileUser(u)})
 }
-func (a API) errorHandler(c fiber.Ctx, err error) error {
-
-	status := fiber.StatusInternalServerError
-	msg := "Internal server error"
-	var fiberErr *fiber.Error
-	switch {
-	case errors.As(err, &fiberErr):
-		status, msg = fiberErr.Code, fiberErr.Message
-	case errors.Is(err, domain.ErrValidation):
-		status, msg = 400, err.Error()
-	case errors.As(err, new(domain.FieldError)):
-		status, msg = 400, err.Error()
-	case errors.Is(err, domain.ErrUnauthorized), errors.Is(err, domain.ErrInvalidToken), errors.Is(err, domain.ErrExpiredToken), errors.Is(err, domain.ErrRefreshReuse), errors.Is(err, domain.ErrInactiveAccount):
-		status, msg = 401, "Authentication failed"
-	case errors.Is(err, domain.ErrForbidden):
-		status, msg = 403, "Forbidden"
-	case errors.Is(err, domain.ErrNotFound):
-		status, msg = 404, "Not found"
-	case errors.Is(err, domain.ErrConflict):
-		status, msg = 409, "Resource already exists"
+func (a API) requireAdmin(c fiber.Ctx) error {
+	for _, r := range current(c).Roles {
+		if r == "admin" {
+			return c.Next()
+		}
 	}
-	if a.Log != nil && status >= 500 {
-		a.Log.Error("request failed", "error", err, "request_id", requestid.FromContext(c))
+	return c.Status(403).JSON(fiber.Map{"success": false, "error": "Insufficient permissions"})
+}
+func (a API) adminList(c fiber.Ctx) error {
+	page, _ := strconv.Atoi(c.Query("page"))
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	if page < 1 {
+		page = 1
 	}
-	return c.Status(status).JSON(dto.ErrorResponse{
-		Message: msg,
-	})
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	users, total, err := a.Service.ListUsers(reqContext(c), c.Query("search"), c.Query("role"), page, limit)
+	if err != nil {
+		return err
+	}
+	out := make([]fiber.Map, 0, len(users))
+	for _, u := range users {
+		out = append(out, adminUser(u))
+	}
+	return c.JSON(fiber.Map{"success": true, "users": out, "total": total, "page": page, "limit": limit})
+}
+func adminUser(u domain.User) fiber.Map {
+	return fiber.Map{"id": u.ID, "email": u.Email, "full_name": u.FullName, "avatar_url": u.AvatarURL, "roles": u.Roles, "teams": u.Teams, "is_active": u.IsActive, "created_at": u.CreatedAt, "last_login_at": u.LastLoginAt}
+}
+func (a API) adminUpdate(c fiber.Ctx) error {
+	var body map[string]any
+	if err := parse(c, &body); err != nil {
+		return err
+	}
+	u, err := a.Service.UpdateUser(reqContext(c), current(c).ID, c.Params("id"), body)
+	if err != nil {
+		return err
+	}
+	return c.JSON(fiber.Map{"success": true, "user": adminUser(u)})
 }

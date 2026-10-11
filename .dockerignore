@@ -1,6 +1,9 @@
-.gitignore
-README.md
-migrations/
-.env.example
+.git
 .env
-Makefile
+.env.*
+!*.example
+node_modules
+bin
+coverage.out
+tasks
+docs

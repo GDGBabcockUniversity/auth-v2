@@ -2,160 +2,243 @@ package auth
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
-	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
+var ErrUnauthorized = errors.New("unauthorized")
+var ErrConflict = errors.New("identity conflict")
+var ErrInactive = errors.New("inactive account")
+var ErrBadInput = errors.New("invalid input")
+
+type Identity struct {
+	UID, Email, Name, Picture string
+	EmailVerified             bool
+}
+type Verifier interface {
+	Verify(context.Context, string) (Identity, error)
+}
+type Store interface {
+	ByUID(context.Context, string) (domain.User, error)
+	ByEmail(context.Context, string) (domain.User, error)
+	ByID(context.Context, string) (domain.User, error)
+	Create(context.Context, *domain.User) (bool, error)
+	LastLogin(context.Context, string) error
+	StoreRefresh(context.Context, *domain.RefreshToken) error
+	ActiveRefresh(context.Context, string, string) (bool, error)
+	RevokeRefresh(context.Context, string, string) error
+	UpdateProfile(context.Context, string, map[string]any) (domain.User, error)
+	AdminList(context.Context, string, string, int, int) ([]domain.User, int64, error)
+	AdminUpdate(context.Context, string, string, map[string]any) (domain.User, error)
+	Audit(context.Context, domain.AuditEvent) error
+}
 type Service struct {
-	UserRepo        domain.UserRepository
-	Google          *GoogleProvider
-	Access, Refresh *Manager
-	RefreshTTL      time.Duration
+	Verifier Verifier
+	Store    Store
+	Tokens   Tokens
+}
+type Pair struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	TokenType    string `json:"token_type"`
+	ExpiresIn    int64  `json:"expires_in"`
 }
 
-func (s Service) googleUser(ctx context.Context, code string) (domain.User, error) {
-	if s.Google == nil {
-		return domain.User{}, domain.ErrUnauthorized
-	}
-	identity, err := s.Google.IdentityFromCode(ctx, code)
+func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (domain.User, Pair, error) {
+	identity, err := s.Verifier.Verify(ctx, raw)
 	if err != nil {
-		return domain.User{}, domain.ErrUnauthorized
+		return domain.User{}, Pair{}, ErrUnauthorized
 	}
-	user, err := s.UserRepo.FindOrCreateGoogleUser(ctx, identity)
+	if identity.UID == "" {
+		return domain.User{}, Pair{}, ErrUnauthorized
+	}
+	user, err := s.Store.ByUID(ctx, identity.UID)
+	if errors.Is(err, domain.ErrNotFound) {
+		email := strings.ToLower(strings.TrimSpace(identity.Email))
+		if !identity.EmailVerified || email == "" || !strings.Contains(email, "@") {
+			return domain.User{}, Pair{}, ErrUnauthorized
+		}
+		_, err = s.Store.ByEmail(ctx, email)
+		if err == nil {
+			return domain.User{}, Pair{}, ErrConflict
+		}
+		if !errors.Is(err, domain.ErrNotFound) {
+			return domain.User{}, Pair{}, err
+		}
+		var avatar *string
+		if identity.Picture != "" {
+			avatar = &identity.Picture
+		}
+		user = domain.User{FirebaseUID: identity.UID, Email: email, FullName: identity.Name, AvatarURL: avatar, EmailVerified: true, Roles: []string{"user"}, Teams: []string{}, IsActive: true}
+		if user.FullName == "" {
+			user.FullName = strings.Split(email, "@")[0]
+		}
+		created, createErr := s.Store.Create(ctx, &user)
+		if createErr != nil {
+			return domain.User{}, Pair{}, createErr
+		}
+		if !created {
+			user, err = s.Store.ByUID(ctx, identity.UID)
+			if errors.Is(err, domain.ErrNotFound) {
+				return domain.User{}, Pair{}, ErrConflict
+			}
+			if err != nil {
+				return domain.User{}, Pair{}, err
+			}
+		}
+	} else if err != nil {
+		return domain.User{}, Pair{}, err
+	}
+	if !user.IsActive {
+		return domain.User{}, Pair{}, ErrInactive
+	}
+	if err = s.Store.LastLogin(ctx, user.ID); err != nil {
+		return domain.User{}, Pair{}, err
+	}
+	access, err := s.Tokens.Issue(user, "access")
 	if err != nil {
-		return domain.User{}, err
+		return domain.User{}, Pair{}, err
 	}
-	if !user.Active {
-		return domain.User{}, domain.ErrInactiveAccount
-	}
-	return user, nil
-}
-
-func (s Service) LoginWithGoogleCode(ctx context.Context, code string) (Session, error) {
-	user, err := s.googleUser(ctx, code)
+	refresh, err := s.Tokens.Issue(user, "refresh")
 	if err != nil {
-		return Session{}, err
+		return domain.User{}, Pair{}, err
 	}
-	return s.issue(ctx, user)
+	if err = s.Store.StoreRefresh(ctx, &domain.RefreshToken{UserID: user.ID, TokenHash: Hash(refresh), ExpiresAt: time.Now().UTC().Add(s.Tokens.RefreshTTL), IsActive: true, IPAddress: ip, UserAgent: agent}); err != nil {
+		return domain.User{}, Pair{}, err
+	}
+	if err := s.Store.Audit(ctx, domain.AuditEvent{UserID: &user.ID, EventType: "login", IPAddress: ip, UserAgent: agent}); err != nil {
+		slog.Error("login audit write failed", "error", err)
+	}
+	return user, Pair{access, refresh, "Bearer", int64(s.Tokens.AccessTTL.Seconds())}, nil
 }
-
-// CreateGoogleHandoff stores only a hash of a short-lived, single-use code.
-func (s Service) CreateGoogleHandoff(ctx context.Context, code string) (string, error) {
-	user, err := s.googleUser(ctx, code)
+func (s Service) AccessUser(ctx context.Context, raw string) (domain.User, Claims, error) {
+	c, err := s.Tokens.Verify(raw, "access")
 	if err != nil {
-		return "", err
+		return domain.User{}, Claims{}, ErrUnauthorized
 	}
-	repo, ok := s.UserRepo.(domain.GoogleHandoffRepository)
-	if !ok {
-		return "", errors.New("google handoff storage is unavailable")
+	u, err := s.Store.ByID(ctx, c.UserID)
+	if errors.Is(err, domain.ErrNotFound) {
+		return domain.User{}, Claims{}, ErrUnauthorized
 	}
-	raw := make([]byte, 32)
-	if _, err := rand.Read(raw); err != nil {
-		return "", err
-	}
-	handoff := base64.RawURLEncoding.EncodeToString(raw)
-	if err := repo.CreateGoogleHandoff(ctx, user.ID, hash(handoff), time.Now().UTC().Add(2*time.Minute)); err != nil {
-		return "", err
-	}
-	return handoff, nil
-}
-
-func (s Service) ExchangeGoogleHandoff(ctx context.Context, handoff string) (Session, error) {
-	raw, err := base64.RawURLEncoding.DecodeString(handoff)
-	if err != nil || len(raw) != 32 {
-		return Session{}, domain.ErrUnauthorized
-	}
-	repo, ok := s.UserRepo.(domain.GoogleHandoffRepository)
-	if !ok {
-		return Session{}, errors.New("google handoff storage is unavailable")
-	}
-	user, err := repo.ConsumeGoogleHandoff(ctx, hash(handoff))
 	if err != nil {
-		return Session{}, err
+		return domain.User{}, Claims{}, err
 	}
-	if !user.Active {
-		return Session{}, domain.ErrInactiveAccount
+	if !u.IsActive {
+		return domain.User{}, Claims{}, ErrInactive
 	}
-	return s.issue(ctx, user)
+	return u, c, nil
 }
-
-type Session struct {
-	User         domain.User `json:"user"`
-	AccessToken  string      `json:"access_token"`
-	RefreshToken string      `json:"refresh_token"`
-	TokenType    string      `json:"token_type"`
-	ExpiresIn    int64       `json:"expires_in"`
-}
-
-func (s Service) Register(ctx context.Context, email, name, password string) (Session, error) {
-	email = strings.TrimSpace(strings.ToLower(email))
-	if !strings.Contains(email, "@") {
-		return Session{}, domain.FieldError{Field: "email", Message: "must be valid"}
-	}
-	hash, e := HashPassword(password)
+func (s Service) Refresh(ctx context.Context, raw string) (Pair, error) {
+	c, e := s.Tokens.Verify(raw, "refresh")
 	if e != nil {
-		return Session{}, domain.FieldError{Field: "password", Message: e.Error()}
+		return Pair{}, ErrUnauthorized
 	}
-	u, e := s.UserRepo.Create(ctx, email, strings.TrimSpace(name), hash)
+	active, e := s.Store.ActiveRefresh(ctx, Hash(raw), c.UserID)
 	if e != nil {
-		return Session{}, e
+		return Pair{}, e
 	}
-	return s.issue(ctx, u)
-}
-
-func (s Service) Login(ctx context.Context, email, password string) (Session, error) {
-	u, e := s.UserRepo.FindByEmail(ctx, email)
-	if e != nil || !VerifyPassword(u.PasswordHash, password) {
-		return Session{}, domain.ErrUnauthorized
+	if !active {
+		return Pair{}, ErrUnauthorized
 	}
-	if !u.Active {
-		return Session{}, domain.ErrInactiveAccount
+	u, e := s.Store.ByID(ctx, c.UserID)
+	if errors.Is(e, domain.ErrNotFound) {
+		return Pair{}, ErrUnauthorized
 	}
-	return s.issue(ctx, u)
-}
-
-func (s Service) RefreshSession(ctx context.Context, raw string) (Session, error) {
-	u, e := s.UserRepo.ConsumeRefresh(ctx, hash(raw))
 	if e != nil {
-		return Session{}, e
+		return Pair{}, e
 	}
-	if !u.Active {
-		return Session{}, domain.ErrInactiveAccount
+	if !u.IsActive {
+		return Pair{}, ErrUnauthorized
 	}
-	return s.issue(ctx, u)
-}
-
-func (s Service) issue(ctx context.Context, u domain.User) (Session, error) {
-	access, e := s.Access.Issue(u.ID, []string(u.Roles), "access")
+	access, e := s.Tokens.Issue(u, "access")
 	if e != nil {
-		return Session{}, e
+		return Pair{}, e
 	}
-	refresh := NewRefreshToken()
-	if e = s.UserRepo.SaveRefresh(ctx, u.ID, hash(refresh), time.Now().Add(s.RefreshTTL)); e != nil {
-		return Session{}, e
+	return Pair{access, raw, "Bearer", int64(s.Tokens.AccessTTL.Seconds())}, nil
+}
+func (s Service) Logout(ctx context.Context, userID, raw string) error {
+	hash := ""
+	if raw != "" {
+		c, e := s.Tokens.Verify(raw, "refresh")
+		if e != nil || c.UserID != userID {
+			return ErrUnauthorized
+		}
+		hash = Hash(raw)
 	}
-	return Session{
-		User:         u,
-		AccessToken:  access,
-		RefreshToken: refresh,
-		TokenType:    "Bearer",
-		ExpiresIn:    int64(s.Access.ttl.Seconds()),
-	}, nil
+	if e := s.Store.RevokeRefresh(ctx, userID, hash); e != nil {
+		return e
+	}
+	if err := s.Store.Audit(ctx, domain.AuditEvent{UserID: &userID, EventType: "logout"}); err != nil {
+		slog.Error("logout audit write failed", "error", err)
+	}
+	return nil
 }
 
-func hash(v string) string {
-	h := sha256.Sum256([]byte(v))
-	return hex.EncodeToString(h[:])
+func (s Service) UpdateProfile(ctx context.Context, id string, updates map[string]any) (domain.User, error) {
+	allowed := map[string]bool{"full_name": true, "whatsapp_number": true, "avatar_url": true, "gender": true, "birthday": true, "student_status": true, "matric_no": true, "department": true, "faculty": true, "primary_track": true, "secondary_track": true, "primary_skill_level": true, "secondary_skill_level": true, "tos_agreed": true, "tos_agreed_at": true, "tos_version": true}
+	if len(updates) == 0 {
+		return domain.User{}, ErrBadInput
+	}
+	for key, value := range updates {
+		if !allowed[key] {
+			return domain.User{}, ErrBadInput
+		}
+		if key == "tos_agreed" {
+			if _, ok := value.(bool); !ok {
+				return domain.User{}, ErrBadInput
+			}
+		} else if value != nil {
+			if _, ok := value.(string); !ok {
+				return domain.User{}, ErrBadInput
+			}
+		}
+	}
+	return s.Store.UpdateProfile(ctx, id, updates)
 }
-
-func NewRefreshToken() string {
-	return uuid.NewString() + uuid.NewString()
+func (s Service) ListUsers(ctx context.Context, search, role string, page, limit int) ([]domain.User, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 20
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	return s.Store.AdminList(ctx, search, role, page, limit)
+}
+func (s Service) UpdateUser(ctx context.Context, actor, id string, updates map[string]any) (domain.User, error) {
+	if len(updates) == 0 {
+		return domain.User{}, ErrBadInput
+	}
+	for key, value := range updates {
+		switch key {
+		case "roles", "teams":
+			values, ok := value.([]any)
+			if !ok {
+				return domain.User{}, ErrBadInput
+			}
+			roles := make([]string, 0, len(values))
+			for _, item := range values {
+				role, ok := item.(string)
+				if !ok || strings.TrimSpace(role) == "" {
+					return domain.User{}, ErrBadInput
+				}
+				roles = append(roles, role)
+			}
+			updates[key] = pq.StringArray(roles)
+		case "is_active":
+			if _, ok := value.(bool); !ok {
+				return domain.User{}, ErrBadInput
+			}
+		default:
+			return domain.User{}, ErrBadInput
+		}
+	}
+	return s.Store.AdminUpdate(ctx, actor, id, updates)
 }
