@@ -42,7 +42,7 @@ func main() {
 		slog.Error("firebase initialization failed", "error", err)
 		os.Exit(1)
 	}
-	service := auth.Service{Verifier: verifier, Store: repository.Store{DB: db}, Tokens: auth.Tokens{Secret: []byte(cfg.JWTSecret), AccessTTL: cfg.AccessTTL, RefreshTTL: cfg.RefreshTTL}}
+	service := auth.Service{Verifier: verifier, Repository: repository.Repository{DB: db}, Tokens: auth.Tokens{Secret: []byte(cfg.JWTSecret), AccessTTL: cfg.AccessTTL, RefreshTTL: cfg.RefreshTTL}}
 	slog.Info("auth service listening", "port", cfg.Port)
 	if err := (httpapi.API{Service: service, Origins: cfg.CORSOrigins}).App().Listen(":" + cfg.Port); err != nil {
 		slog.Error("server stopped", "error", err)

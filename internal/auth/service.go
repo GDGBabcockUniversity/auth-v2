@@ -23,30 +23,16 @@ type Identity struct {
 type Verifier interface {
 	Verify(context.Context, string) (Identity, error)
 }
-type Store interface {
-	ByUID(context.Context, string) (domain.User, error)
-	ByEmail(context.Context, string) (domain.User, error)
-	ByID(context.Context, string) (domain.User, error)
-	Create(context.Context, *domain.User) (bool, error)
-	LastLogin(context.Context, string) error
-	StoreRefresh(context.Context, *domain.RefreshToken) error
-	ActiveRefresh(context.Context, string, string) (bool, error)
-	RevokeRefresh(context.Context, string, string) error
-	UpdateProfile(context.Context, string, map[string]any) (domain.User, error)
-	AdminList(context.Context, string, string, int, int) ([]domain.User, int64, error)
-	AdminUpdate(context.Context, string, string, map[string]any) (domain.User, error)
-	Audit(context.Context, domain.AuditEvent) error
-}
 type Service struct {
-	Verifier Verifier
-	Store    Store
-	Tokens   Tokens
+	Verifier   Verifier
+	Repository domain.AuthRepository
+	Tokens     Tokens
 }
 type Pair struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken  string
+	RefreshToken string
+	TokenType    string
+	ExpiresIn    int64
 }
 
 func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (domain.User, Pair, error) {
@@ -57,18 +43,18 @@ func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (doma
 	if identity.UID == "" {
 		return domain.User{}, Pair{}, ErrUnauthorized
 	}
-	user, err := s.Store.ByUID(ctx, identity.UID)
+	user, err := s.Repository.FindByFirebaseUID(ctx, identity.UID)
 	if errors.Is(err, domain.ErrNotFound) {
 		email := strings.ToLower(strings.TrimSpace(identity.Email))
 		if !identity.EmailVerified || email == "" || !strings.Contains(email, "@") {
 			return domain.User{}, Pair{}, ErrUnauthorized
 		}
-		_, err = s.Store.ByEmail(ctx, email)
-		if err == nil {
-			return domain.User{}, Pair{}, ErrConflict
+		exists, findErr := s.Repository.ExistsByEmail(ctx, email)
+		if findErr != nil {
+			return domain.User{}, Pair{}, findErr
 		}
-		if !errors.Is(err, domain.ErrNotFound) {
-			return domain.User{}, Pair{}, err
+		if exists {
+			return domain.User{}, Pair{}, ErrConflict
 		}
 		var avatar *string
 		if identity.Picture != "" {
@@ -78,12 +64,12 @@ func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (doma
 		if user.FullName == "" {
 			user.FullName = strings.Split(email, "@")[0]
 		}
-		created, createErr := s.Store.Create(ctx, &user)
+		created, createErr := s.Repository.Create(ctx, &user)
 		if createErr != nil {
 			return domain.User{}, Pair{}, createErr
 		}
 		if !created {
-			user, err = s.Store.ByUID(ctx, identity.UID)
+			user, err = s.Repository.FindByFirebaseUID(ctx, identity.UID)
 			if errors.Is(err, domain.ErrNotFound) {
 				return domain.User{}, Pair{}, ErrConflict
 			}
@@ -97,7 +83,7 @@ func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (doma
 	if !user.IsActive {
 		return domain.User{}, Pair{}, ErrInactive
 	}
-	if err = s.Store.LastLogin(ctx, user.ID); err != nil {
+	if err = s.Repository.UpdateLastLogin(ctx, user.ID); err != nil {
 		return domain.User{}, Pair{}, err
 	}
 	access, err := s.Tokens.Issue(user, "access")
@@ -108,10 +94,10 @@ func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (doma
 	if err != nil {
 		return domain.User{}, Pair{}, err
 	}
-	if err = s.Store.StoreRefresh(ctx, &domain.RefreshToken{UserID: user.ID, TokenHash: Hash(refresh), ExpiresAt: time.Now().UTC().Add(s.Tokens.RefreshTTL), IsActive: true, IPAddress: ip, UserAgent: agent}); err != nil {
+	if err = s.Repository.CreateRefreshToken(ctx, &domain.RefreshToken{UserID: user.ID, TokenHash: Hash(refresh), ExpiresAt: time.Now().UTC().Add(s.Tokens.RefreshTTL), IsActive: true, IPAddress: ip, UserAgent: agent}); err != nil {
 		return domain.User{}, Pair{}, err
 	}
-	if err := s.Store.Audit(ctx, domain.AuditEvent{UserID: &user.ID, EventType: "login", IPAddress: ip, UserAgent: agent}); err != nil {
+	if err := s.Repository.CreateAuditEvent(ctx, domain.AuditEvent{UserID: &user.ID, EventType: "login", IPAddress: ip, UserAgent: agent}); err != nil {
 		slog.Error("login audit write failed", "error", err)
 	}
 	return user, Pair{access, refresh, "Bearer", int64(s.Tokens.AccessTTL.Seconds())}, nil
@@ -121,7 +107,7 @@ func (s Service) AccessUser(ctx context.Context, raw string) (domain.User, Claim
 	if err != nil {
 		return domain.User{}, Claims{}, ErrUnauthorized
 	}
-	u, err := s.Store.ByID(ctx, c.UserID)
+	u, err := s.Repository.FindByID(ctx, c.UserID)
 	if errors.Is(err, domain.ErrNotFound) {
 		return domain.User{}, Claims{}, ErrUnauthorized
 	}
@@ -138,14 +124,14 @@ func (s Service) Refresh(ctx context.Context, raw string) (Pair, error) {
 	if e != nil {
 		return Pair{}, ErrUnauthorized
 	}
-	active, e := s.Store.ActiveRefresh(ctx, Hash(raw), c.UserID)
+	active, e := s.Repository.ExistsActiveRefreshToken(ctx, Hash(raw), c.UserID)
 	if e != nil {
 		return Pair{}, e
 	}
 	if !active {
 		return Pair{}, ErrUnauthorized
 	}
-	u, e := s.Store.ByID(ctx, c.UserID)
+	u, e := s.Repository.FindByID(ctx, c.UserID)
 	if errors.Is(e, domain.ErrNotFound) {
 		return Pair{}, ErrUnauthorized
 	}
@@ -170,10 +156,10 @@ func (s Service) Logout(ctx context.Context, userID, raw string) error {
 		}
 		hash = Hash(raw)
 	}
-	if e := s.Store.RevokeRefresh(ctx, userID, hash); e != nil {
+	if e := s.Repository.RevokeRefreshTokens(ctx, userID, hash); e != nil {
 		return e
 	}
-	if err := s.Store.Audit(ctx, domain.AuditEvent{UserID: &userID, EventType: "logout"}); err != nil {
+	if err := s.Repository.CreateAuditEvent(ctx, domain.AuditEvent{UserID: &userID, EventType: "logout"}); err != nil {
 		slog.Error("logout audit write failed", "error", err)
 	}
 	return nil
@@ -198,7 +184,7 @@ func (s Service) UpdateProfile(ctx context.Context, id string, updates map[strin
 			}
 		}
 	}
-	return s.Store.UpdateProfile(ctx, id, updates)
+	return s.Repository.UpdateProfile(ctx, id, updates)
 }
 func (s Service) ListUsers(ctx context.Context, search, role string, page, limit int) ([]domain.User, int64, error) {
 	if page < 1 {
@@ -210,7 +196,7 @@ func (s Service) ListUsers(ctx context.Context, search, role string, page, limit
 	if limit > 100 {
 		limit = 100
 	}
-	return s.Store.AdminList(ctx, search, role, page, limit)
+	return s.Repository.FindUsers(ctx, search, role, page, limit)
 }
 func (s Service) UpdateUser(ctx context.Context, actor, id string, updates map[string]any) (domain.User, error) {
 	if len(updates) == 0 {
@@ -240,5 +226,5 @@ func (s Service) UpdateUser(ctx context.Context, actor, id string, updates map[s
 			return domain.User{}, ErrBadInput
 		}
 	}
-	return s.Store.AdminUpdate(ctx, actor, id, updates)
+	return s.Repository.UpdateUser(ctx, actor, id, updates)
 }

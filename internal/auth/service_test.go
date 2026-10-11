@@ -25,7 +25,7 @@ type memoryStore struct {
 	created int
 }
 
-func (m *memoryStore) ByUID(_ context.Context, uid string) (domain.User, error) {
+func (m *memoryStore) FindByFirebaseUID(_ context.Context, uid string) (domain.User, error) {
 	for _, u := range m.users {
 		if u.FirebaseUID == uid {
 			return u, nil
@@ -33,15 +33,15 @@ func (m *memoryStore) ByUID(_ context.Context, uid string) (domain.User, error) 
 	}
 	return domain.User{}, domain.ErrNotFound
 }
-func (m *memoryStore) ByEmail(_ context.Context, email string) (domain.User, error) {
+func (m *memoryStore) ExistsByEmail(_ context.Context, email string) (bool, error) {
 	for _, u := range m.users {
 		if u.Email == email {
-			return u, nil
+			return true, nil
 		}
 	}
-	return domain.User{}, domain.ErrNotFound
+	return false, nil
 }
-func (m *memoryStore) ByID(_ context.Context, id string) (domain.User, error) {
+func (m *memoryStore) FindByID(_ context.Context, id string) (domain.User, error) {
 	u, ok := m.users[id]
 	if !ok {
 		return u, domain.ErrNotFound
@@ -54,15 +54,15 @@ func (m *memoryStore) Create(_ context.Context, u *domain.User) (bool, error) {
 	m.users[u.ID] = *u
 	return true, nil
 }
-func (m *memoryStore) LastLogin(context.Context, string) error { return nil }
-func (m *memoryStore) StoreRefresh(_ context.Context, t *domain.RefreshToken) error {
+func (m *memoryStore) UpdateLastLogin(context.Context, string) error { return nil }
+func (m *memoryStore) CreateRefreshToken(_ context.Context, t *domain.RefreshToken) error {
 	m.hashes[t.TokenHash] = true
 	return nil
 }
-func (m *memoryStore) ActiveRefresh(_ context.Context, hash, userID string) (bool, error) {
+func (m *memoryStore) ExistsActiveRefreshToken(_ context.Context, hash, userID string) (bool, error) {
 	return m.hashes[hash], nil
 }
-func (m *memoryStore) RevokeRefresh(_ context.Context, userID, hash string) error {
+func (m *memoryStore) RevokeRefreshTokens(_ context.Context, userID, hash string) error {
 	if hash == "" {
 		clear(m.hashes)
 	} else {
@@ -73,15 +73,15 @@ func (m *memoryStore) RevokeRefresh(_ context.Context, userID, hash string) erro
 func (m *memoryStore) UpdateProfile(context.Context, string, map[string]any) (domain.User, error) {
 	return domain.User{}, nil
 }
-func (m *memoryStore) AdminList(context.Context, string, string, int, int) ([]domain.User, int64, error) {
+func (m *memoryStore) FindUsers(context.Context, string, string, int, int) ([]domain.User, int64, error) {
 	return nil, 0, nil
 }
-func (m *memoryStore) AdminUpdate(context.Context, string, string, map[string]any) (domain.User, error) {
+func (m *memoryStore) UpdateUser(context.Context, string, string, map[string]any) (domain.User, error) {
 	return domain.User{}, nil
 }
-func (m *memoryStore) Audit(context.Context, domain.AuditEvent) error { return nil }
+func (m *memoryStore) CreateAuditEvent(context.Context, domain.AuditEvent) error { return nil }
 func service(v identityVerifier, m *memoryStore) auth.Service {
-	return auth.Service{Verifier: v, Store: m, Tokens: auth.Tokens{Secret: []byte("01234567890123456789012345678901"), AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour}}
+	return auth.Service{Verifier: v, Repository: m, Tokens: auth.Tokens{Secret: []byte("01234567890123456789012345678901"), AccessTTL: time.Hour, RefreshTTL: 24 * time.Hour}}
 }
 func TestLoginPreservesExistingUUIDAndRefreshSession(t *testing.T) {
 	ctx := context.Background()

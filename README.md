@@ -15,3 +15,7 @@ For a disposable local database, `docker compose -f docker-compose.go-auth.yml u
 `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`, `PUT /auth/profile`, `GET /auth/verify`, `GET /admin/users`, `PUT /admin/users/:id`, and `GET /health`. See [the API contract](docs/go-auth-contract.md) for the legacy response shape and [the deployment guide](docs/go-auth-operations.md) for cutover constraints.
 
 The Go API intentionally does not serve `/events`, `/radar`, `/team`, or `/analytics`. Existing website profile enrichment from those tables needs another owner before `/auth/me` can be switched without changing the website UI.
+
+## Code layout
+
+`internal/domain` owns the auth models and repository interfaces. `internal/auth` implements login, token, profile, and admin rules against those interfaces. `internal/repository` is the GORM/PostgreSQL adapter. `internal/httpapi/api.go` registers Fiber routes, `handler.go` handles requests, and `internal/httpapi/dto/request.go` and `response.go` define the JSON contract.

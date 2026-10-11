@@ -28,30 +28,34 @@ func TestExistingAuthSchemaSupportsIdentityAndAdminAudit(t *testing.T) {
 		t.Fatal(tx.Error)
 	}
 	defer tx.Rollback()
-	store := repository.Store{DB: tx}
+	store := repository.Repository{DB: tx}
 	ctx := context.Background()
 	user := domain.User{FirebaseUID: "test-uid", Email: "test@example.invalid", FullName: "Test Member", Roles: pq.StringArray{"user"}, Teams: pq.StringArray{}, IsActive: true, EmailVerified: true}
 	created, err := store.Create(ctx, &user)
 	if err != nil || !created || user.ID == "" {
 		t.Fatalf("create user: created=%v id=%q err=%v", created, user.ID, err)
 	}
-	found, err := store.ByUID(ctx, "test-uid")
+	found, err := store.FindByFirebaseUID(ctx, "test-uid")
 	if err != nil || found.ID != user.ID {
 		t.Fatalf("lookup changed UUID: %+v %v", found, err)
 	}
-	listed, total, err := store.AdminList(ctx, "test@example.invalid", "user", 1, 20)
+	exists, err := store.ExistsByEmail(ctx, "TEST@example.invalid")
+	if err != nil || !exists {
+		t.Fatalf("case-insensitive email existence: exists=%v err=%v", exists, err)
+	}
+	listed, total, err := store.FindUsers(ctx, "test@example.invalid", "user", 1, 20)
 	if err != nil || total != 1 || len(listed) != 1 || listed[0].ID != user.ID {
 		t.Fatalf("admin list: total=%d users=%+v err=%v", total, listed, err)
 	}
 	token := domain.RefreshToken{UserID: user.ID, TokenHash: "test-hash", ExpiresAt: time.Now().Add(time.Hour), IsActive: true}
-	if err = store.StoreRefresh(ctx, &token); err != nil {
+	if err = store.CreateRefreshToken(ctx, &token); err != nil {
 		t.Fatal(err)
 	}
-	active, err := store.ActiveRefresh(ctx, "test-hash", user.ID)
+	active, err := store.ExistsActiveRefreshToken(ctx, "test-hash", user.ID)
 	if err != nil || !active {
 		t.Fatalf("stored refresh missing: %v", err)
 	}
-	updated, err := store.AdminUpdate(ctx, user.ID, user.ID, map[string]any{"roles": pq.StringArray{"admin"}, "is_active": false})
+	updated, err := store.UpdateUser(ctx, user.ID, user.ID, map[string]any{"roles": pq.StringArray{"admin"}, "is_active": false})
 	if err != nil || updated.IsActive || len(updated.Roles) != 1 || updated.Roles[0] != "admin" {
 		t.Fatalf("admin update: %+v %v", updated, err)
 	}

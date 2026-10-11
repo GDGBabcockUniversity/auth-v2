@@ -15,17 +15,17 @@ import (
 )
 
 type userStore struct {
-	auth.Store
+	domain.AuthRepository
 	user domain.User
 }
 
-func (s *userStore) ByID(context.Context, string) (domain.User, error) { return s.user, nil }
+func (s *userStore) FindByID(context.Context, string) (domain.User, error) { return s.user, nil }
 
 func TestProtectedRoutesUseCurrentRolesAndRejectRefreshToken(t *testing.T) {
 	user := domain.User{ID: "user-id", Email: "user@example.invalid", FullName: "Test", Roles: pq.StringArray{"admin"}, IsActive: true}
 	store := &userStore{user: user}
 	tokens := auth.Tokens{Secret: []byte("01234567890123456789012345678901"), AccessTTL: time.Hour, RefreshTTL: time.Hour}
-	api := httpapi.API{Service: auth.Service{Store: store, Tokens: tokens}, Origins: []string{"http://localhost:3000"}}.App()
+	api := httpapi.API{Service: auth.Service{Repository: store, Tokens: tokens}, Origins: []string{"http://localhost:3000"}}.App()
 	access, err := tokens.Issue(user, "access")
 	if err != nil {
 		t.Fatal(err)
