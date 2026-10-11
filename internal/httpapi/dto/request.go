@@ -12,7 +12,5 @@ type LogoutRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-// Maps preserve field presence for partial updates and allow unknown fields to
-// be rejected by the service rather than silently discarded by JSON binding.
 type ProfileUpdateRequest map[string]any
 type AdminUpdateRequest map[string]any

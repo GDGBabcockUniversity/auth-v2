@@ -1,9 +1,8 @@
-package repository
+package postgres
 
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"strings"
 	"time"
 
@@ -11,17 +10,6 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
-type Repository struct{ DB *gorm.DB }
-
-var _ domain.AuthRepository = Repository{}
-
-func notFound(err error) error {
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return domain.ErrNotFound
-	}
-	return err
-}
 
 func (s Repository) FindByFirebaseUID(ctx context.Context, uid string) (domain.User, error) {
 	var u domain.User
@@ -45,24 +33,9 @@ func (s Repository) Create(ctx context.Context, u *domain.User) (bool, error) {
 func (s Repository) UpdateLastLogin(ctx context.Context, id string) error {
 	return s.DB.WithContext(ctx).Model(&domain.User{}).Where("id = ?", id).Update("last_login_at", time.Now().UTC()).Error
 }
-func (s Repository) CreateRefreshToken(ctx context.Context, t *domain.RefreshToken) error {
-	return s.DB.WithContext(ctx).Create(t).Error
-}
-func (s Repository) ExistsActiveRefreshToken(ctx context.Context, hash string, userID string) (bool, error) {
-	var count int64
-	e := s.DB.WithContext(ctx).Model(&domain.RefreshToken{}).Where("token_hash = ? AND user_id = ? AND is_active = true AND expires_at > ?", hash, userID, time.Now().UTC()).Count(&count).Error
-	return count > 0, e
-}
-func (s Repository) RevokeRefreshTokens(ctx context.Context, userID, hash string) error {
-	q := s.DB.WithContext(ctx).Model(&domain.RefreshToken{}).Where("user_id = ? AND is_active = true", userID)
-	if hash != "" {
-		q = q.Where("token_hash = ?", hash)
-	}
-	return q.Updates(map[string]any{"is_active": false, "revoked_at": time.Now().UTC()}).Error
-}
 func (s Repository) UpdateProfile(ctx context.Context, id string, updates map[string]any) (domain.User, error) {
 	if len(updates) == 0 {
-		return domain.User{}, errors.New("no profile fields")
+		return domain.User{}, domain.ErrBadInput
 	}
 	if err := s.DB.WithContext(ctx).Model(&domain.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 		return domain.User{}, err
@@ -87,7 +60,7 @@ func (s Repository) FindUsers(ctx context.Context, search, role string, page, li
 }
 func (s Repository) UpdateUser(ctx context.Context, actor, id string, updates map[string]any) (domain.User, error) {
 	if len(updates) == 0 {
-		return domain.User{}, errors.New("no admin fields")
+		return domain.User{}, domain.ErrBadInput
 	}
 	err := s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var before domain.User
@@ -116,7 +89,4 @@ func (s Repository) UpdateUser(ctx context.Context, actor, id string, updates ma
 		return domain.User{}, err
 	}
 	return s.FindByID(ctx, id)
-}
-func (s Repository) CreateAuditEvent(ctx context.Context, event domain.AuditEvent) error {
-	return s.DB.WithContext(ctx).Create(&event).Error
 }

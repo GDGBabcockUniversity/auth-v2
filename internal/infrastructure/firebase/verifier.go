@@ -1,7 +1,9 @@
-package firebaseauth
+package firebase
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"strings"
 
 	firebase "firebase.google.com/go/v4"
@@ -11,7 +13,11 @@ import (
 	"google.golang.org/api/option"
 )
 
-type Verifier struct{ Client *fireauth.Client }
+type Verifier struct {
+	Client *fireauth.Client
+}
+
+var _ auth.Verifier = Verifier{}
 
 func New(ctx context.Context, c config.Config) (Verifier, error) {
 	opts := []option.ClientOption{}
@@ -19,6 +25,9 @@ func New(ctx context.Context, c config.Config) (Verifier, error) {
 	case c.FirebaseServiceAccount != "":
 		opts = append(opts, option.WithCredentialsJSON([]byte(c.FirebaseServiceAccount)))
 	case c.FirebaseServiceAccountPath != "":
+		if _, err := os.Stat(c.FirebaseServiceAccountPath); err != nil {
+			return Verifier{}, fmt.Errorf("FIREBASE_SERVICE_ACCOUNT_PATH is unavailable: %w", err)
+		}
 		opts = append(opts, option.WithCredentialsFile(c.FirebaseServiceAccountPath))
 	}
 	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: c.FirebaseProjectID}, opts...)
@@ -34,6 +43,14 @@ func (v Verifier) Verify(ctx context.Context, raw string) (auth.Identity, error)
 	if err != nil {
 		return auth.Identity{}, err
 	}
-	get := func(key string) string { value, _ := token.Claims[key].(string); return strings.TrimSpace(value) }
-	return auth.Identity{UID: token.UID, Email: strings.ToLower(get("email")), Name: get("name"), Picture: get("picture"), EmailVerified: token.Claims["email_verified"] == true}, nil
+	get := func(key string) string {
+		value, _ := token.Claims[key].(string)
+		return strings.TrimSpace(value)
+	}
+	return auth.Identity{
+		UID:   token.UID,
+		Email: strings.ToLower(get("email")),
+		Name:  get("name"), Picture: get("picture"),
+		EmailVerified: token.Claims["email_verified"] == true,
+	}, nil
 }

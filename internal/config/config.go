@@ -8,21 +8,37 @@ import (
 )
 
 type Config struct {
-	Port, DatabaseURL, FirebaseProjectID, FirebaseServiceAccount, FirebaseServiceAccountPath, JWTSecret string
-	CORSOrigins                                                                                         []string
-	AccessTTL, RefreshTTL                                                                               time.Duration
+	Port, DatabaseURL, FirebaseProjectID, FirebaseServiceAccount, FirebaseServiceAccountPath, JWTSecret, QSTASH_TOKEN string
+	CORSOrigins                                                                                                       []string
+	AccessTTL, RefreshTTL                                                                                             time.Duration
 }
 
 func Load() (Config, error) {
-	c := Config{Port: env("HTTP_PORT", "8080"), DatabaseURL: os.Getenv("DATABASE_URL"), FirebaseProjectID: os.Getenv("FIREBASE_PROJECT_ID"), FirebaseServiceAccount: os.Getenv("FIREBASE_SERVICE_ACCOUNT"), FirebaseServiceAccountPath: os.Getenv("FIREBASE_SERVICE_ACCOUNT_PATH"), JWTSecret: os.Getenv("JWT_SECRET"), CORSOrigins: split(os.Getenv("CORS_ORIGINS"))}
-	if c.DatabaseURL == "" || c.FirebaseProjectID == "" || len(c.JWTSecret) < 32 {
-		return c, errors.New("DATABASE_URL, FIREBASE_PROJECT_ID, and JWT_SECRET (32+ characters) are required")
+	c := Config{
+		Port:                       getEnv("HTTP_PORT", "8080"),
+		DatabaseURL:                getEnv("DATABASE_URL", ""),
+		FirebaseProjectID:          getEnv("FIREBASE_PROJECT_ID", ""),
+		FirebaseServiceAccount:     getEnv("FIREBASE_SERVICE_ACCOUNT", ""),
+		FirebaseServiceAccountPath: getEnv("FIREBASE_SERVICE_ACCOUNT_PATH", ""),
+		JWTSecret:                  getEnv("JWT_SECRET", ""),
+		CORSOrigins:                split(getEnv("CORS_ORIGINS", "")),
+		QSTASH_TOKEN:               getEnv("QSTASH_TOKEN", ""),
+	}
+
+	if c.DatabaseURL == "" {
+		return c, errors.New("DATABASE_URL is required")
+	}
+	if c.FirebaseProjectID == "" || c.FirebaseProjectID == "your-firebase-project-id" {
+		return c, errors.New("FIREBASE_PROJECT_ID must be set to your Firebase project ID")
+	}
+	if len(c.JWTSecret) < 32 || c.JWTSecret == "replace-with-a-random-secret-at-least-32-characters" {
+		return c, errors.New("JWT_SECRET must be a non-placeholder secret of at least 32 characters")
 	}
 	var err error
-	if c.AccessTTL, err = time.ParseDuration(env("JWT_ACCESS_TTL", "24h")); err != nil || c.AccessTTL <= 0 {
+	if c.AccessTTL, err = time.ParseDuration(getEnv("JWT_ACCESS_TTL", "24h")); err != nil || c.AccessTTL <= 0 {
 		return c, errors.New("invalid JWT_ACCESS_TTL")
 	}
-	if c.RefreshTTL, err = time.ParseDuration(env("JWT_REFRESH_TTL", "168h")); err != nil || c.RefreshTTL <= 0 {
+	if c.RefreshTTL, err = time.ParseDuration(getEnv("JWT_REFRESH_TTL", "168h")); err != nil || c.RefreshTTL <= 0 {
 		return c, errors.New("invalid JWT_REFRESH_TTL")
 	}
 	if len(c.CORSOrigins) == 0 {
@@ -35,7 +51,7 @@ func Load() (Config, error) {
 	}
 	return c, nil
 }
-func env(key, def string) string {
+func getEnv(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
 	}

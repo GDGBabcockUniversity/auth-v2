@@ -1,12 +1,9 @@
 package domain
 
 import (
-	"errors"
 	"github.com/lib/pq"
 	"time"
 )
-
-var ErrNotFound = errors.New("record not found")
 
 type User struct {
 	ID                  string         `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`

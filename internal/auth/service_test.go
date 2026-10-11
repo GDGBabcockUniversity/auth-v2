@@ -91,7 +91,7 @@ func TestLoginPreservesExistingUUIDAndRefreshSession(t *testing.T) {
 	if err != nil || u.ID != "stable-id" || m.created != 0 {
 		t.Fatalf("login changed identity: user=%+v err=%v", u, err)
 	}
-	if _, _, err = s.AccessUser(ctx, pair.RefreshToken); !errors.Is(err, auth.ErrUnauthorized) {
+	if _, _, err = s.AccessUser(ctx, pair.RefreshToken); !errors.Is(err, domain.ErrUnauthorized) {
 		t.Fatalf("refresh token accepted as access: %v", err)
 	}
 	refreshed, err := s.Refresh(ctx, pair.RefreshToken)
@@ -101,14 +101,14 @@ func TestLoginPreservesExistingUUIDAndRefreshSession(t *testing.T) {
 	if err = s.Logout(ctx, u.ID, pair.RefreshToken); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.Refresh(ctx, pair.RefreshToken); !errors.Is(err, auth.ErrUnauthorized) {
+	if _, err = s.Refresh(ctx, pair.RefreshToken); !errors.Is(err, domain.ErrUnauthorized) {
 		t.Fatalf("revoked refresh accepted: %v", err)
 	}
 }
 func TestNewUIDCannotTakeExistingEmail(t *testing.T) {
 	m := &memoryStore{users: map[string]domain.User{"stable-id": {ID: "stable-id", FirebaseUID: "original", Email: "person@example.com", IsActive: true}}, hashes: map[string]bool{}}
 	s := service(identityVerifier{identity: auth.Identity{UID: "attacker", Email: "person@example.com", EmailVerified: true}}, m)
-	if _, _, err := s.Login(context.Background(), "other-firebase-token", nil, nil); !errors.Is(err, auth.ErrConflict) {
+	if _, _, err := s.Login(context.Background(), "other-firebase-token", nil, nil); !errors.Is(err, domain.ErrConflict) {
 		t.Fatalf("wanted identity conflict, got %v", err)
 	}
 	if m.users["stable-id"].FirebaseUID != "original" || m.created != 0 {
@@ -125,10 +125,10 @@ func TestInactiveUserCannotLoginOrUseExistingAccess(t *testing.T) {
 	u := m.users["stable-id"]
 	u.IsActive = false
 	m.users[u.ID] = u
-	if _, _, err = s.AccessUser(context.Background(), pair.AccessToken); !errors.Is(err, auth.ErrInactive) {
+	if _, _, err = s.AccessUser(context.Background(), pair.AccessToken); !errors.Is(err, domain.ErrInactive) {
 		t.Fatalf("disabled access accepted: %v", err)
 	}
-	if _, _, err = s.Login(context.Background(), "token", nil, nil); !errors.Is(err, auth.ErrInactive) {
+	if _, _, err = s.Login(context.Background(), "token", nil, nil); !errors.Is(err, domain.ErrInactive) {
 		t.Fatalf("disabled login accepted: %v", err)
 	}
 }

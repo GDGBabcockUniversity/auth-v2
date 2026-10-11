@@ -2,7 +2,6 @@ package domain
 
 import "context"
 
-// UserRepository is the persistence contract used by the auth domain.
 type UserRepository interface {
 	FindByID(context.Context, string) (User, error)
 	FindByFirebaseUID(context.Context, string) (User, error)

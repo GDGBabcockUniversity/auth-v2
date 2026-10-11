@@ -21,16 +21,16 @@ func (a API) App() *fiber.App {
 		status := fiber.StatusInternalServerError
 		message := "Internal server error"
 		switch {
-		case errors.Is(e, auth.ErrUnauthorized):
+		case errors.Is(e, domain.ErrUnauthorized):
 			status = 401
 			message = "Authentication required"
-		case errors.Is(e, auth.ErrInactive):
+		case errors.Is(e, domain.ErrInactive):
 			status = 403
 			message = "Account is inactive"
-		case errors.Is(e, auth.ErrConflict):
+		case errors.Is(e, domain.ErrConflict):
 			status = 409
 			message = "Account needs identity linking"
-		case errors.Is(e, auth.ErrBadInput):
+		case errors.Is(e, domain.ErrBadInput):
 			status = 400
 			message = "Invalid request"
 		case errors.Is(e, domain.ErrNotFound):
@@ -41,7 +41,9 @@ func (a API) App() *fiber.App {
 	}})
 	app.Use(recover.New())
 	app.Use(cors.New(cors.Config{AllowOrigins: a.Origins, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"}, AllowMethods: []string{"GET", "POST", "PUT", "OPTIONS"}}))
-	app.Get("/health", func(c fiber.Ctx) error { return c.JSON(dto.HealthResponse{Status: "healthy"}) })
+	app.Get("/health", func(c fiber.Ctx) error {
+		return c.JSON(dto.HealthResponse{Status: "healthy"})
+	})
 	app.Post("/auth/login", a.login)
 	app.Post("/auth/refresh", a.refresh)
 	app.Post("/auth/logout", a.authorize, a.logout)

@@ -1,4 +1,4 @@
-package repository_test
+package postgres_test
 
 import (
 	"context"
@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
-	"github.com/GDGBabcockUniversity/auth-v2/internal/repository"
+	"github.com/GDGBabcockUniversity/auth-v2/internal/infrastructure/postgres"
 	"github.com/lib/pq"
-	"gorm.io/driver/postgres"
+	gormpostgres "gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -19,7 +19,7 @@ func TestExistingAuthSchemaSupportsIdentityAndAdminAudit(t *testing.T) {
 	if url == "" {
 		t.Skip("AUTH_TEST_DATABASE_URL is required for disposable Postgres integration test")
 	}
-	db, err := gorm.Open(postgres.Open(url), &gorm.Config{})
+	db, err := gorm.Open(gormpostgres.Open(url), &gorm.Config{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,7 +28,7 @@ func TestExistingAuthSchemaSupportsIdentityAndAdminAudit(t *testing.T) {
 		t.Fatal(tx.Error)
 	}
 	defer tx.Rollback()
-	store := repository.Repository{DB: tx}
+	store := postgres.Repository{DB: tx}
 	ctx := context.Background()
 	user := domain.User{FirebaseUID: "test-uid", Email: "test@example.invalid", FullName: "Test Member", Roles: pq.StringArray{"user"}, Teams: pq.StringArray{}, IsActive: true, EmailVerified: true}
 	created, err := store.Create(ctx, &user)

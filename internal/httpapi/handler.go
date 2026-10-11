@@ -14,10 +14,10 @@ import (
 func (a API) login(c fiber.Ctx) error {
 	var body dto.LoginRequest
 	if err := c.Bind().Body(&body); err != nil {
-		return auth.ErrBadInput
+		return domain.ErrBadInput
 	}
 	if body.FirebaseToken == "" {
-		return auth.ErrBadInput
+		return domain.ErrBadInput
 	}
 	ip := net.ParseIP(c.IP())
 	var addr *string
@@ -48,10 +48,10 @@ func (a API) login(c fiber.Ctx) error {
 func (a API) refresh(c fiber.Ctx) error {
 	var body dto.RefreshRequest
 	if err := c.Bind().Body(&body); err != nil {
-		return auth.ErrBadInput
+		return domain.ErrBadInput
 	}
 	if body.RefreshToken == "" {
-		return auth.ErrBadInput
+		return domain.ErrBadInput
 	}
 	tokens, err := a.Service.Refresh(c.Context(), body.RefreshToken)
 	if err != nil {
@@ -65,15 +65,13 @@ func (a API) refresh(c fiber.Ctx) error {
 func (a API) authorize(c fiber.Ctx) error {
 	h := strings.Fields(c.Get("Authorization"))
 	if len(h) != 2 || !strings.EqualFold(h[0], "Bearer") {
-		return auth.ErrUnauthorized
+		return domain.ErrUnauthorized
 	}
 	user, claims, err := a.Service.AccessUser(c.Context(), h[1])
 	if err != nil {
 		return err
 	}
 	c.Locals("user", user)
-	claims.Email = user.Email
-	claims.FullName = user.FullName
 	claims.Roles = []string(user.Roles)
 	claims.Teams = []string(user.Teams)
 	c.Locals("claims", claims)
@@ -83,7 +81,7 @@ func (a API) logout(c fiber.Ctx) error {
 	var body dto.LogoutRequest
 	if len(c.Body()) > 0 {
 		if err := c.Bind().Body(&body); err != nil {
-			return auth.ErrBadInput
+			return domain.ErrBadInput
 		}
 	}
 	user := c.Locals("user").(domain.User)
@@ -112,7 +110,7 @@ func (a API) verify(c fiber.Ctx) error {
 func (a API) profile(c fiber.Ctx) error {
 	var body dto.ProfileUpdateRequest
 	if err := c.Bind().Body(&body); err != nil {
-		return auth.ErrBadInput
+		return domain.ErrBadInput
 	}
 	user := c.Locals("user").(domain.User)
 	u, err := a.Service.UpdateProfile(c.Context(), user.ID, map[string]any(body))
@@ -169,7 +167,7 @@ func (a API) adminList(c fiber.Ctx) error {
 func (a API) adminUpdate(c fiber.Ctx) error {
 	var body dto.AdminUpdateRequest
 	if err := c.Bind().Body(&body); err != nil {
-		return auth.ErrBadInput
+		return domain.ErrBadInput
 	}
 	user := c.Locals("user").(domain.User)
 	u, err := a.Service.UpdateUser(c.Context(), user.ID, c.Params("id"), map[string]any(body))
