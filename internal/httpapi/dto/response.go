@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/GDGBabcockUniversity/auth-v2/internal/auth"
-	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
 )
 
 type ErrorResponse struct {
@@ -23,10 +22,6 @@ type LoginUser struct {
 	AvatarURL *string  `json:"avatar_url"`
 	Roles     []string `json:"roles"`
 	Teams     []string `json:"teams"`
-}
-
-func NewLoginUser(u domain.User) LoginUser {
-	return LoginUser{u.ID, u.Email, u.FullName, u.AvatarURL, u.Roles, u.Teams}
 }
 
 type ProfileUser struct {
@@ -58,20 +53,6 @@ type ProfileUser struct {
 	IsActive            bool       `json:"is_active"`
 }
 
-func NewProfileUser(u domain.User) ProfileUser {
-	return ProfileUser{
-		ID: u.ID, FirebaseUID: u.FirebaseUID, Email: u.Email, FullName: u.FullName,
-		WhatsAppNumber: u.WhatsAppNumber, AvatarURL: u.AvatarURL, EmailVerified: u.EmailVerified,
-		Gender: u.Gender, Birthday: u.Birthday, StudentStatus: u.StudentStatus,
-		MatricNo: u.MatricNo, Department: u.Department, Faculty: u.Faculty,
-		PrimaryTrack: u.PrimaryTrack, SecondaryTrack: u.SecondaryTrack,
-		PrimarySkillLevel: u.PrimarySkillLevel, SecondarySkillLevel: u.SecondarySkillLevel,
-		Teams: u.Teams, Roles: u.Roles, TOSAgreed: u.TOSAgreed,
-		TOSAgreedAt: u.TOSAgreedAt, TOSVersion: u.TOSVersion, CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt, LastLoginAt: u.LastLoginAt, IsActive: u.IsActive,
-	}
-}
-
 type AdminUser struct {
 	ID          string     `json:"id"`
 	Email       string     `json:"email"`
@@ -82,10 +63,6 @@ type AdminUser struct {
 	IsActive    bool       `json:"is_active"`
 	CreatedAt   time.Time  `json:"created_at"`
 	LastLoginAt *time.Time `json:"last_login_at"`
-}
-
-func NewAdminUser(u domain.User) AdminUser {
-	return AdminUser{u.ID, u.Email, u.FullName, u.AvatarURL, u.Roles, u.Teams, u.IsActive, u.CreatedAt, u.LastLoginAt}
 }
 
 type LoginResponse struct {
@@ -99,10 +76,6 @@ type TokenPair struct {
 	RefreshToken string `json:"refresh_token"`
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int64  `json:"expires_in"`
-}
-
-func NewTokenPair(pair auth.Pair) TokenPair {
-	return TokenPair{pair.AccessToken, pair.RefreshToken, pair.TokenType, pair.ExpiresIn}
 }
 
 type TokensResponse struct {
