@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -131,10 +132,9 @@ func (a API) profile(c fiber.Ctx) error {
 }
 func (a API) requireAdmin(c fiber.Ctx) error {
 	user := c.Locals("user").(domain.User)
-	for _, r := range user.Roles {
-		if r == "admin" {
-			return c.Next()
-		}
+
+	if slices.Contains(user.Roles, "admin") {
+		return c.Next()
 	}
 	return c.Status(403).JSON(dto.ErrorResponse{Success: false, Error: "Insufficient permissions"})
 }
