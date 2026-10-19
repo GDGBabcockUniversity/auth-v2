@@ -51,7 +51,7 @@ func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (doma
 	user, err := s.Repository.FindByFirebaseUID(ctx, identity.UID)
 	if errors.Is(err, domain.ErrNotFound) {
 		email := strings.ToLower(strings.TrimSpace(identity.Email))
-		if !identity.EmailVerified || email == "" || !strings.Contains(email, "@") {
+		if email == "" || !strings.Contains(email, "@") {
 			return domain.User{}, Pair{}, domain.ErrUnauthorized
 		}
 		exists, findErr := s.Repository.ExistsByEmail(ctx, email)
@@ -71,7 +71,7 @@ func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (doma
 				Email:         email,
 				FullName:      identity.Name,
 				AvatarURL:     avatar,
-				EmailVerified: true,
+				EmailVerified: identity.EmailVerified,
 				Roles:         []string{"user"},
 				Teams:         []string{},
 				IsActive:      true,

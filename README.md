@@ -17,6 +17,8 @@ Set `FIREBASE_PROJECT_ID` to the `project_id` from that service account. A host-
 
 ## Endpoints
 
+Email verification is not required to sign up or sign in. `POST /auth/login` accepts a valid Firebase ID token and creates a user on first login, storing the token's actual email verification status. An email already associated with another Firebase UID still requires identity linking.
+
 `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /auth/me`, `PUT /auth/profile`, `GET /auth/verify`, `GET /admin/users`, `PUT /admin/users/:id`, and `GET /health`.
 
 The Go API intentionally does not serve `/events`, `/radar`, `/team`, or `/analytics`. Existing website profile enrichment from those tables needs another owner before `/auth/me` can be switched without changing the website UI.
