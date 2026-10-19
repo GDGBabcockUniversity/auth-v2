@@ -6,7 +6,10 @@ COPY cmd ./cmd
 COPY internal ./internal
 RUN CGO_ENABLED=0 go build -trimpath -o /auth-api ./cmd/auth
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM alpine:latest
+RUN apk add --no-cache ca-certificates tzdata \
+    && addgroup -S -g 65532 nonroot \
+    && adduser -S -D -H -u 65532 -G nonroot nonroot
 COPY --from=build /auth-api /auth-api
 EXPOSE 8080
 USER nonroot:nonroot
