@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 
-	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -14,12 +13,7 @@ func Open(ctx context.Context, dsn string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	err = db.AutoMigrate(domain.AuditEvent{}, domain.RefreshToken{}, domain.User{}, domain.Session{})
-
-	if err != nil {
-		return nil, err
-	}
-
+	// The existing auth schema is managed with database/auth.sql, not at startup.
 	sqlDB, err := db.DB()
 
 	if err != nil {

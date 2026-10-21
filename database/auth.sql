@@ -1,5 +1,6 @@
 -- Auth Service Database Schema
 -- Central user storage for SSO across all platform services
+-- Safe to rerun: existing tables/indexes/triggers are preserved; functions and comments are refreshed.
 
 -- Enable UUID extension (using pgcrypto for gen_random_uuid)
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
@@ -113,10 +114,22 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to auto-update updated_at
-CREATE TRIGGER update_users_updated_at
-  BEFORE UPDATE ON users
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
+-- PostgreSQL has no CREATE TRIGGER IF NOT EXISTS syntax.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'update_users_updated_at'
+      AND tgrelid = 'users'::regclass
+      AND NOT tgisinternal
+  ) THEN
+    CREATE TRIGGER update_users_updated_at
+      BEFORE UPDATE ON users
+      FOR EACH ROW
+      EXECUTE FUNCTION update_updated_at_column();
+  END IF;
+END;
+$$;
 
 -- Function to clean up expired tokens
 CREATE OR REPLACE FUNCTION cleanup_expired_tokens()
