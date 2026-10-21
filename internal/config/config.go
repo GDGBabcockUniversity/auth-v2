@@ -15,7 +15,7 @@ type Config struct {
 
 func Load() (Config, error) {
 	c := Config{
-		Port:                       getEnv("HTTP_PORT", "8080"),
+		Port:                       getEnv("PORT", getEnv("HTTP_PORT", "8080")),
 		DatabaseURL:                getEnv("DATABASE_URL", ""),
 		FirebaseProjectID:          getEnv("FIREBASE_PROJECT_ID", ""),
 		FirebaseServiceAccount:     getEnv("FIREBASE_SERVICE_ACCOUNT", ""),

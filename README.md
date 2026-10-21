@@ -6,7 +6,7 @@ This Fiber service is the authentication portion of the legacy `../auth` Express
 
 1. Configure PostgreSQL with the four auth tables in [`database/auth.sql`](database/auth.sql), and set `DATABASE_URL` to its connection string.
 2. Copy `.env.example` to `.env` if you do not already have a local `.env`. Set the real `FIREBASE_PROJECT_ID`, a random `JWT_SECRET` of at least 32 characters, and Firebase Admin credentials. Use the same `JWT_SECRET` as the legacy Express service while both must accept each other's platform tokens.
-3. Export those variables and run `go run ./cmd/auth`, or build with `go build ./cmd/auth`. The service listens on `HTTP_PORT` (default `8080`).
+3. Export those variables and run `go run ./cmd/auth`, or build with `go build ./cmd/auth`. The service listens on `PORT`, then `HTTP_PORT`, then default `8080`.
 
 For Docker, `docker compose up --build api` starts the disposable auth database and API on `localhost:8080`. Compose reads `.env`. Provide Firebase Admin credentials in one of these ways:
 
@@ -14,6 +14,12 @@ For Docker, `docker compose up --build api` starts the disposable auth database 
 - Put the JSON file at `.secrets/firebase-service-account.json`. Compose mounts that directory read-only and sets `FIREBASE_SERVICE_ACCOUNT_PATH` inside the container. The file must be readable by the container's nonroot user.
 
 Set `FIREBASE_PROJECT_ID` to the `project_id` from that service account. A host-side path in `FIREBASE_SERVICE_ACCOUNT_PATH` is not automatically visible inside Docker. The `.env` and `.secrets` paths are ignored by Git and excluded from the image build context. For a database-only start, run `docker compose up -d db`.
+
+## Deploy to Vercel
+
+Vercel builds `Dockerfile.vercel` and supplies `PORT` at runtime; the service gives that variable precedence over `HTTP_PORT`. Set `DATABASE_URL`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT` (the service-account JSON), `JWT_SECRET`, and `CORS_ORIGINS` in the Vercel project environment for the deployment environment you use. Use a reachable hosted PostgreSQL database with the auth schema already applied. The Compose database hostname `db` and local `.secrets` mount are only available when running Compose locally.
+
+After redeploying, request `/health`, which returns `{"status":"healthy"}`. If startup fails, check Vercel runtime logs for `configuration error`, `database unavailable`, or `firebase initialization failed`.
 
 ## Endpoints
 
