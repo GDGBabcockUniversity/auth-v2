@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/GDGBabcockUniversity/auth-v2/internal/database"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -16,15 +16,8 @@ type Repository struct {
 var _ domain.AuthRepository = Repository{}
 
 func Open(ctx context.Context, dsn string) (Repository, error) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := database.Open(ctx, dsn)
 	if err != nil {
-		return Repository{}, err
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		return Repository{}, err
-	}
-	if err := sqlDB.PingContext(ctx); err != nil {
 		return Repository{}, err
 	}
 	return Repository{DB: db}, nil
