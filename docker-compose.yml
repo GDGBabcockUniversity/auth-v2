@@ -32,3 +32,4 @@ services:
         condition: service_healthy
 volumes:
   auth_db_data:
+  
