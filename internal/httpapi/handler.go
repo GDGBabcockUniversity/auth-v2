@@ -172,7 +172,6 @@ func (a API) refresh(c fiber.Ctx) error {
 	}})
 }
 
-
 func (a API) authorize(c fiber.Ctx) error {
 	h := strings.Fields(c.Get("Authorization"))
 	if len(h) != 2 || !strings.EqualFold(h[0], "Bearer") {
@@ -237,7 +236,6 @@ func (a API) me(c fiber.Ctx) error {
 		UpdatedAt: u.UpdatedAt, LastLoginAt: u.LastLoginAt, IsActive: u.IsActive,
 	}})
 }
-
 
 func (a API) verify(c fiber.Ctx) error {
 	return c.JSON(dto.VerifyResponse{Success: true, Valid: true, User: c.Locals("claims").(auth.Claims)})

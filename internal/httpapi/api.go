@@ -41,7 +41,7 @@ func (a API) App() *fiber.App {
 	}})
 	app.Use(recover.New())
 	app.Use(cors.New(cors.Config{AllowOrigins: a.Origins, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"}, AllowMethods: []string{"GET", "POST", "PUT", "OPTIONS"}}))
-	
+
 	registerSwagger(app)
 
 	app.Get("/health", a.health)

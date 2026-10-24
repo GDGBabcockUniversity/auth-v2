@@ -13,7 +13,7 @@ import (
 	"github.com/GDGBabcockUniversity/auth-v2/internal/infrastructure/postgres"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/infrastructure/queue"
 
-	_ "github.com/GDGBabcockUniversity/auth-v2/docs"	
+	_ "github.com/GDGBabcockUniversity/auth-v2/docs"
 )
 
 // @title           GDG Babcock Auth API
