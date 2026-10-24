@@ -1,6 +1,6 @@
 .env.staging
-.env.local
 .env.prod
+.env.local
 .air.toml
 bin/
 coverage.out

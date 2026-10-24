@@ -7,11 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/GDGBabcockUniversity/auth-v2/internal/database"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/infrastructure/postgres"
 	"github.com/lib/pq"
-	gormpostgres "gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func TestExistingAuthSchemaSupportsIdentityAndAdminAudit(t *testing.T) {
@@ -19,10 +18,15 @@ func TestExistingAuthSchemaSupportsIdentityAndAdminAudit(t *testing.T) {
 	if url == "" {
 		t.Skip("AUTH_TEST_DATABASE_URL is required for disposable Postgres integration test")
 	}
-	db, err := gorm.Open(gormpostgres.Open(url), &gorm.Config{})
+	db, err := database.Open(context.Background(), url)
 	if err != nil {
 		t.Fatal(err)
 	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 	tx := db.Begin()
 	if tx.Error != nil {
 		t.Fatal(tx.Error)

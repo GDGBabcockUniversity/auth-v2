@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	Port, DatabaseURL, FirebaseProjectID, FirebaseServiceAccount, FirebaseServiceAccountPath, JWTSecret, QSTASH_TOKEN string
+	Port, DatabaseURL, FirebaseProjectID, FirebaseServiceAccount, JWTSecret, QSTASH_TOKEN string
 	CORSOrigins                                                                                                       []string
 	AccessTTL, RefreshTTL                                                                                             time.Duration
 }
@@ -19,7 +19,6 @@ func Load() (Config, error) {
 		DatabaseURL:                getEnv("DATABASE_URL", ""),
 		FirebaseProjectID:          getEnv("FIREBASE_PROJECT_ID", ""),
 		FirebaseServiceAccount:     getEnv("FIREBASE_SERVICE_ACCOUNT", ""),
-		FirebaseServiceAccountPath: getEnv("FIREBASE_SERVICE_ACCOUNT_PATH", ""),
 		JWTSecret:                  getEnv("JWT_SECRET", ""),
 		CORSOrigins:                split(getEnv("CORS_ORIGINS", "")),
 		QSTASH_TOKEN:               getEnv("QSTASH_TOKEN", ""),
