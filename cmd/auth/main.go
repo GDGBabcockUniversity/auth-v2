@@ -12,8 +12,19 @@ import (
 	"github.com/GDGBabcockUniversity/auth-v2/internal/infrastructure/firebase"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/infrastructure/postgres"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/infrastructure/queue"
+
+	_ "github.com/GDGBabcockUniversity/auth-v2/docs"	
 )
 
+// @title           GDG Babcock Auth API
+// @version         2.0
+// @description     Firebase login → platform JWTs. Bearer access token on protected routes; admin role for /admin/*.
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description     Type "Bearer" followed by a space and the access token.
 func main() {
 	cfg, err := config.Load()
 	if err != nil {

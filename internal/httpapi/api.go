@@ -42,11 +42,9 @@ func (a API) App() *fiber.App {
 	app.Use(recover.New())
 	app.Use(cors.New(cors.Config{AllowOrigins: a.Origins, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"}, AllowMethods: []string{"GET", "POST", "PUT", "OPTIONS"}}))
 	
-	registerDocs(app)
-	
-	app.Get("/health", func(c fiber.Ctx) error {
-		return c.JSON(dto.HealthResponse{Status: "healthy"})
-	})
+	registerSwagger(app)
+
+	app.Get("/health", a.health)
 	app.Post("/auth/login", a.login)
 	app.Post("/auth/refresh", a.refresh)
 	app.Post("/auth/logout", a.authorize, a.logout)
