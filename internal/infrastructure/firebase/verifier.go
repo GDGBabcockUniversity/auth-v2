@@ -2,8 +2,6 @@ package firebase
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"strings"
 
 	firebase "firebase.google.com/go/v4"
@@ -21,15 +19,7 @@ var _ auth.Verifier = Verifier{}
 
 func New(ctx context.Context, c config.Config) (Verifier, error) {
 	opts := []option.ClientOption{}
-	switch {
-	case c.FirebaseServiceAccount != "":
-		opts = append(opts, option.WithCredentialsJSON([]byte(c.FirebaseServiceAccount)))
-	case c.FirebaseServiceAccountPath != "":
-		if _, err := os.Stat(c.FirebaseServiceAccountPath); err != nil {
-			return Verifier{}, fmt.Errorf("FIREBASE_SERVICE_ACCOUNT_PATH is unavailable: %w", err)
-		}
-		opts = append(opts, option.WithCredentialsFile(c.FirebaseServiceAccountPath))
-	}
+	opts = append(opts, option.WithCredentialsJSON([]byte(c.FirebaseServiceAccount)))
 	app, err := firebase.NewApp(ctx, &firebase.Config{ProjectID: c.FirebaseProjectID}, opts...)
 	if err != nil {
 		return Verifier{}, err
