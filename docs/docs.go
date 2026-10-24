@@ -59,19 +59,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminListResponse"
+                            "$ref": "#/definitions/dto.AdminListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -108,7 +108,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUpdateRequest"
+                            "$ref": "#/definitions/dto.AdminUpdateRequest"
                         }
                     }
                 ],
@@ -116,31 +116,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUserResponse"
+                            "$ref": "#/definitions/dto.AdminUserResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -165,7 +165,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginRequest"
+                            "$ref": "#/definitions/dto.LoginRequest"
                         }
                     }
                 ],
@@ -173,31 +173,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginResponse"
+                            "$ref": "#/definitions/dto.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -226,7 +226,7 @@ const docTemplate = `{
                         "name": "body",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutRequest"
+                            "$ref": "#/definitions/dto.LogoutRequest"
                         }
                     }
                 ],
@@ -234,19 +234,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutResponse"
+                            "$ref": "#/definitions/dto.LogoutResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -270,19 +270,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse"
+                            "$ref": "#/definitions/dto.ProfileResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -312,7 +312,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUpdateRequest"
+                            "$ref": "#/definitions/dto.ProfileUpdateRequest"
                         }
                     }
                 ],
@@ -320,31 +320,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse"
+                            "$ref": "#/definitions/dto.ProfileResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -369,7 +369,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.RefreshRequest"
+                            "$ref": "#/definitions/dto.RefreshRequest"
                         }
                     }
                 ],
@@ -377,19 +377,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokensResponse"
+                            "$ref": "#/definitions/dto.TokensResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -408,7 +408,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.HealthResponse"
+                            "$ref": "#/definitions/dto.HealthResponse"
                         }
                     }
                 }
@@ -416,7 +416,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminListResponse": {
+        "dto.AdminListResponse": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -434,12 +434,12 @@ const docTemplate = `{
                 "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser"
+                        "$ref": "#/definitions/dto.AdminUser"
                     }
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUpdateRequest": {
+        "dto.AdminUpdateRequest": {
             "type": "object",
             "properties": {
                 "is_active": {
@@ -467,7 +467,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser": {
+        "dto.AdminUser": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -505,18 +505,18 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUserResponse": {
+        "dto.AdminUserResponse": {
             "type": "object",
             "properties": {
                 "success": {
                     "type": "boolean"
                 },
                 "user": {
-                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser"
+                    "$ref": "#/definitions/dto.AdminUser"
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse": {
+        "dto.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -527,7 +527,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.HealthResponse": {
+        "dto.HealthResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -535,7 +535,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginRequest": {
+        "dto.LoginRequest": {
             "type": "object",
             "properties": {
                 "firebase_token": {
@@ -544,21 +544,21 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginResponse": {
+        "dto.LoginResponse": {
             "type": "object",
             "properties": {
                 "success": {
                     "type": "boolean"
                 },
                 "tokens": {
-                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair"
+                    "$ref": "#/definitions/dto.TokenPair"
                 },
                 "user": {
-                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginUser"
+                    "$ref": "#/definitions/dto.LoginUser"
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginUser": {
+        "dto.LoginUser": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -587,7 +587,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutRequest": {
+        "dto.LogoutRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -596,7 +596,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutResponse": {
+        "dto.LogoutResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -607,18 +607,18 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse": {
+        "dto.ProfileResponse": {
             "type": "object",
             "properties": {
                 "success": {
                     "type": "boolean"
                 },
                 "user": {
-                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUser"
+                    "$ref": "#/definitions/dto.ProfileUser"
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUpdateRequest": {
+        "dto.ProfileUpdateRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -677,7 +677,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUser": {
+        "dto.ProfileUser": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -766,7 +766,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.RefreshRequest": {
+        "dto.RefreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -775,7 +775,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair": {
+        "dto.TokenPair": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -792,14 +792,14 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokensResponse": {
+        "dto.TokensResponse": {
             "type": "object",
             "properties": {
                 "success": {
                     "type": "boolean"
                 },
                 "tokens": {
-                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair"
+                    "$ref": "#/definitions/dto.TokenPair"
                 }
             }
         }

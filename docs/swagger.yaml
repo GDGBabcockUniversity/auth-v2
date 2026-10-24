@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminListResponse:
+  dto.AdminListResponse:
     properties:
       limit:
         type: integer
@@ -12,10 +12,10 @@ definitions:
         type: integer
       users:
         items:
-          $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser'
+          $ref: '#/definitions/dto.AdminUser'
         type: array
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUpdateRequest:
+  dto.AdminUpdateRequest:
     properties:
       is_active:
         example: true
@@ -34,7 +34,7 @@ definitions:
           type: string
         type: array
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser:
+  dto.AdminUser:
     properties:
       avatar_url:
         type: string
@@ -59,41 +59,41 @@ definitions:
           type: string
         type: array
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUserResponse:
+  dto.AdminUserResponse:
     properties:
       success:
         type: boolean
       user:
-        $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser'
+        $ref: '#/definitions/dto.AdminUser'
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse:
+  dto.ErrorResponse:
     properties:
       error:
         type: string
       success:
         type: boolean
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.HealthResponse:
+  dto.HealthResponse:
     properties:
       status:
         type: string
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginRequest:
+  dto.LoginRequest:
     properties:
       firebase_token:
         example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginResponse:
+  dto.LoginResponse:
     properties:
       success:
         type: boolean
       tokens:
-        $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair'
+        $ref: '#/definitions/dto.TokenPair'
       user:
-        $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginUser'
+        $ref: '#/definitions/dto.LoginUser'
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginUser:
+  dto.LoginUser:
     properties:
       avatar_url:
         type: string
@@ -112,27 +112,27 @@ definitions:
           type: string
         type: array
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutRequest:
+  dto.LogoutRequest:
     properties:
       refresh_token:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutResponse:
+  dto.LogoutResponse:
     properties:
       message:
         type: string
       success:
         type: boolean
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse:
+  dto.ProfileResponse:
     properties:
       success:
         type: boolean
       user:
-        $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUser'
+        $ref: '#/definitions/dto.ProfileUser'
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUpdateRequest:
+  dto.ProfileUpdateRequest:
     properties:
       avatar_url:
         type: string
@@ -173,7 +173,7 @@ definitions:
         example: "+2348012345678"
         type: string
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUser:
+  dto.ProfileUser:
     properties:
       avatar_url:
         type: string
@@ -232,13 +232,13 @@ definitions:
       whatsapp_number:
         type: string
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.RefreshRequest:
+  dto.RefreshRequest:
     properties:
       refresh_token:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair:
+  dto.TokenPair:
     properties:
       access_token:
         type: string
@@ -249,12 +249,12 @@ definitions:
       token_type:
         type: string
     type: object
-  github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokensResponse:
+  dto.TokensResponse:
     properties:
       success:
         type: boolean
       tokens:
-        $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair'
+        $ref: '#/definitions/dto.TokenPair'
     type: object
 host: localhost:8080
 info:
@@ -289,15 +289,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminListResponse'
+            $ref: '#/definitions/dto.AdminListResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List users (admin)
@@ -318,30 +318,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUpdateRequest'
+          $ref: '#/definitions/dto.AdminUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUserResponse'
+            $ref: '#/definitions/dto.AdminUserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update user (admin)
@@ -357,30 +357,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginRequest'
+          $ref: '#/definitions/dto.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginResponse'
+            $ref: '#/definitions/dto.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: Login with Firebase ID token
       tags:
       - Auth
@@ -393,22 +393,22 @@ paths:
         in: body
         name: body
         schema:
-          $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutRequest'
+          $ref: '#/definitions/dto.LogoutRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutResponse'
+            $ref: '#/definitions/dto.LogoutResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Logout
@@ -422,15 +422,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse'
+            $ref: '#/definitions/dto.ProfileResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Current user profile
@@ -446,30 +446,30 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUpdateRequest'
+          $ref: '#/definitions/dto.ProfileUpdateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse'
+            $ref: '#/definitions/dto.ProfileResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update current profile
@@ -485,22 +485,22 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.RefreshRequest'
+          $ref: '#/definitions/dto.RefreshRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokensResponse'
+            $ref: '#/definitions/dto.TokensResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse'
+            $ref: '#/definitions/dto.ErrorResponse'
       summary: Refresh access token
       tags:
       - Auth
@@ -512,7 +512,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.HealthResponse'
+            $ref: '#/definitions/dto.HealthResponse'
       summary: Health check
       tags:
       - Health
