@@ -1,0 +1,525 @@
+basePath: /
+definitions:
+  dto.AdminListResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      success:
+        type: boolean
+      total:
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/dto.AdminUser'
+        type: array
+    type: object
+  dto.AdminUpdateRequest:
+    properties:
+      is_active:
+        example: true
+        type: boolean
+      roles:
+        example:
+        - member
+        - admin
+        items:
+          type: string
+        type: array
+      teams:
+        example:
+        - core
+        items:
+          type: string
+        type: array
+    type: object
+  dto.AdminUser:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      last_login_at:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      teams:
+        items:
+          type: string
+        type: array
+    type: object
+  dto.AdminUserResponse:
+    properties:
+      success:
+        type: boolean
+      user:
+        $ref: '#/definitions/dto.AdminUser'
+    type: object
+  dto.ErrorResponse:
+    properties:
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  dto.HealthResponse:
+    properties:
+      status:
+        type: string
+    type: object
+  dto.LoginRequest:
+    properties:
+      firebase_token:
+        example: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    type: object
+  dto.LoginResponse:
+    properties:
+      success:
+        type: boolean
+      tokens:
+        $ref: '#/definitions/dto.TokenPair'
+      user:
+        $ref: '#/definitions/dto.LoginUser'
+    type: object
+  dto.LoginUser:
+    properties:
+      avatar_url:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      teams:
+        items:
+          type: string
+        type: array
+    type: object
+  dto.LogoutRequest:
+    properties:
+      refresh_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    type: object
+  dto.LogoutResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  dto.ProfileResponse:
+    properties:
+      success:
+        type: boolean
+      user:
+        $ref: '#/definitions/dto.ProfileUser'
+    type: object
+  dto.ProfileUpdateRequest:
+    properties:
+      avatar_url:
+        type: string
+      birthday:
+        example: "2000-01-15"
+        type: string
+      department:
+        example: Computer Science
+        type: string
+      faculty:
+        type: string
+      full_name:
+        example: Jane Doe
+        type: string
+      gender:
+        type: string
+      matric_no:
+        type: string
+      primary_skill_level:
+        type: string
+      primary_track:
+        type: string
+      secondary_skill_level:
+        type: string
+      secondary_track:
+        type: string
+      student_status:
+        type: string
+      tos_agreed:
+        example: true
+        type: boolean
+      tos_agreed_at:
+        type: string
+      tos_version:
+        example: "1.0"
+        type: string
+      whatsapp_number:
+        example: "+2348012345678"
+        type: string
+    type: object
+  dto.ProfileUser:
+    properties:
+      avatar_url:
+        type: string
+      birthday:
+        type: string
+      created_at:
+        type: string
+      department:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      faculty:
+        type: string
+      firebase_uid:
+        type: string
+      full_name:
+        type: string
+      gender:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      last_login_at:
+        type: string
+      matric_no:
+        type: string
+      primary_skill_level:
+        type: string
+      primary_track:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      secondary_skill_level:
+        type: string
+      secondary_track:
+        type: string
+      student_status:
+        type: string
+      teams:
+        items:
+          type: string
+        type: array
+      tos_agreed:
+        type: boolean
+      tos_agreed_at:
+        type: string
+      tos_version:
+        type: string
+      updated_at:
+        type: string
+      whatsapp_number:
+        type: string
+    type: object
+  dto.RefreshRequest:
+    properties:
+      refresh_token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+    type: object
+  dto.TokenPair:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      token_type:
+        type: string
+    type: object
+  dto.TokensResponse:
+    properties:
+      success:
+        type: boolean
+      tokens:
+        $ref: '#/definitions/dto.TokenPair'
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Firebase login → platform JWTs. Bearer access token on protected routes;
+    admin role for /admin/*.
+  title: GDG Babcock Auth API
+  version: "2.0"
+paths:
+  /admin/users:
+    get:
+      parameters:
+      - description: Page (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Search email/name
+        in: query
+        name: search
+        type: string
+      - description: Filter by role
+        in: query
+        name: role
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AdminListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List users (admin)
+      tags:
+      - Admin
+  /admin/users/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: User UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: roles, teams, is_active
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AdminUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.AdminUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user (admin)
+      tags:
+      - Admin
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Firebase ID token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Login with Firebase ID token
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Optional refresh token to revoke
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/dto.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.LogoutResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - Auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ProfileResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Current user profile
+      tags:
+      - Auth
+  /auth/profile:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ProfileUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update current profile
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.TokensResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - Auth
+  /health:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.HealthResponse'
+      summary: Health check
+      tags:
+      - Health
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and the access token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
