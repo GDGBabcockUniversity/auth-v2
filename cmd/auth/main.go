@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/GDGBabcockUniversity/auth-v2/docs"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/auth"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/config"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/httpapi"
@@ -19,8 +20,6 @@ import (
 // @title           GDG Babcock Auth API
 // @version         2.0
 // @description     Firebase login → platform JWTs. Bearer access token on protected routes; admin role for /admin/*.
-// @host            localhost:8080
-// @BasePath        /
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
@@ -51,6 +50,9 @@ func main() {
 		AccessTTL:  cfg.AccessTTL,
 		RefreshTTL: cfg.RefreshTTL,
 	}, publisher)
+
+	docs.SwaggerInfo.Host = cfg.SwaggerHost
+	docs.SwaggerInfo.BasePath = cfg.SwaggerBasePath
 
 	slog.Info("auth service listening", "port", cfg.Port)
 	if err := (httpapi.API{Service: *service, Origins: cfg.CORSOrigins}).App().Listen(":" + cfg.Port); err != nil {

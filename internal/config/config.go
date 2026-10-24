@@ -9,19 +9,22 @@ import (
 
 type Config struct {
 	Port, DatabaseURL, FirebaseProjectID, FirebaseServiceAccount, JWTSecret, QSTASH_TOKEN string
-	CORSOrigins                                                                                                       []string
-	AccessTTL, RefreshTTL                                                                                             time.Duration
+	SwaggerHost, SwaggerBasePath                                                          string
+	CORSOrigins                                                                           []string
+	AccessTTL, RefreshTTL                                                                 time.Duration
 }
 
 func Load() (Config, error) {
 	c := Config{
-		Port:                       getEnv("PORT", getEnv("HTTP_PORT", "8080")),
-		DatabaseURL:                getEnv("DATABASE_URL", ""),
-		FirebaseProjectID:          getEnv("FIREBASE_PROJECT_ID", ""),
-		FirebaseServiceAccount:     getEnv("FIREBASE_SERVICE_ACCOUNT", ""),
-		JWTSecret:                  getEnv("JWT_SECRET", ""),
-		CORSOrigins:                split(getEnv("CORS_ORIGINS", "")),
-		QSTASH_TOKEN:               getEnv("QSTASH_TOKEN", ""),
+		Port:                   getEnv("PORT", getEnv("HTTP_PORT", "8080")),
+		DatabaseURL:            getEnv("DATABASE_URL", ""),
+		FirebaseProjectID:      getEnv("FIREBASE_PROJECT_ID", ""),
+		FirebaseServiceAccount: getEnv("FIREBASE_SERVICE_ACCOUNT", ""),
+		JWTSecret:              getEnv("JWT_SECRET", ""),
+		CORSOrigins:            split(getEnv("CORS_ORIGINS", "")),
+		QSTASH_TOKEN:           getEnv("QSTASH_TOKEN", ""),
+		SwaggerHost:            getEnv("SWAGGER_HOST", "localhost:8080"),
+		SwaggerBasePath:        getEnv("SWAGGER_BASE_PATH", "/"),
 	}
 
 	if c.DatabaseURL == "" {

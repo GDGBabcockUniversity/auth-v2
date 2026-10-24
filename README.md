@@ -19,6 +19,8 @@ Set `FIREBASE_PROJECT_ID` to the `project_id` from that service account. A host-
 
 Vercel builds `Dockerfile.vercel` and supplies `PORT` at runtime; the service gives that variable precedence over `HTTP_PORT`. Set `DATABASE_URL`, `FIREBASE_PROJECT_ID`, `FIREBASE_SERVICE_ACCOUNT` (the service-account JSON), `JWT_SECRET`, and `CORS_ORIGINS` in the Vercel project environment for the deployment environment you use. Use a reachable hosted PostgreSQL database with the auth schema already applied. The Compose database hostname `db` and local `.secrets` mount are only available when running Compose locally.
 
+Set `SWAGGER_HOST` to the deployment's public host without a scheme (dev: `auth-v2.pxxlspace.cv`) and `SWAGGER_BASE_PATH` to the path the API is mounted under (`/`). They default to `localhost:8080` and `/`, and are applied to the served OpenAPI document at startup, so `/swagger` issues its "Try it out" requests against the right origin.
+
 After redeploying, request `/health`, which returns `{"status":"healthy"}`. If startup fails, check Vercel runtime logs for `configuration error`, `database unavailable`, or `firebase initialization failed`.
 
 ## Endpoints
