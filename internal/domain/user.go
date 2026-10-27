@@ -1,9 +1,20 @@
 package domain
 
 import (
-	"github.com/lib/pq"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
+
+// PendingUIDPrefix marks a user an admin pre-registered before that person has
+// ever signed in. firebase_uid is UNIQUE NOT NULL, so each waiting row carries
+// its own sentinel until the real Firebase UID claims it at first login.
+const PendingUIDPrefix = "pending:"
+
+// PendingUID mints a sentinel that cannot collide with a Firebase UID.
+func PendingUID() string { return PendingUIDPrefix + uuid.NewString() }
 
 type User struct {
 	ID                  string         `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
@@ -36,6 +47,12 @@ type User struct {
 }
 
 func (User) TableName() string { return "users" }
+
+// Pending reports whether this row is still waiting for its first sign-in.
+func (u User) Pending() bool { return strings.HasPrefix(u.FirebaseUID, PendingUIDPrefix) }
+
+// Deleted reports whether an admin has archived this user.
+func (u User) Deleted() bool { return u.DeletedAt != nil }
 
 type RefreshToken struct {
 	ID        string     `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`

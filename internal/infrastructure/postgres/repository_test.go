@@ -47,7 +47,7 @@ func TestExistingAuthSchemaSupportsIdentityAndAdminAudit(t *testing.T) {
 	if err != nil || !exists {
 		t.Fatalf("case-insensitive email existence: exists=%v err=%v", exists, err)
 	}
-	listed, total, err := store.FindUsers(ctx, "test@example.invalid", "user", 1, 20)
+	listed, total, err := store.FindUsers(ctx, domain.UserQuery{Search: "test@example.invalid", Role: "user", Page: 1, Limit: 20})
 	if err != nil || total != 1 || len(listed) != 1 || listed[0].ID != user.ID {
 		t.Fatalf("admin list: total=%d users=%+v err=%v", total, listed, err)
 	}

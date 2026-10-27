@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"strings"
@@ -10,6 +11,16 @@ import (
 	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
 	"github.com/lib/pq"
 )
+
+// adminEditableProfileFields are the profile columns an admin may correct on
+// someone else's record, alongside roles, teams and is_active.
+var adminEditableProfileFields = map[string]bool{
+	"full_name": true, "whatsapp_number": true, "avatar_url": true,
+	"gender": true, "birthday": true, "student_status": true,
+	"matric_no": true, "department": true, "faculty": true,
+	"primary_track": true, "secondary_track": true,
+	"primary_skill_level": true, "secondary_skill_level": true,
+}
 
 type Identity struct {
 	UID, Email, Name, Picture string
@@ -54,19 +65,29 @@ func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (doma
 		if email == "" || !strings.Contains(email, "@") {
 			return domain.User{}, Pair{}, domain.ErrUnauthorized
 		}
-		exists, findErr := s.Repository.ExistsByEmail(ctx, email)
-		if findErr != nil {
-			return domain.User{}, Pair{}, findErr
-		}
-		if exists {
-			return domain.User{}, Pair{}, domain.ErrConflict
-		}
 		var avatar *string
 		if identity.Picture != "" {
 			avatar = &identity.Picture
 		}
-		user =
-			domain.User{
+		waiting, findErr := s.Repository.FindByEmail(ctx, email)
+		switch {
+		case findErr != nil && !errors.Is(findErr, domain.ErrNotFound):
+			return domain.User{}, Pair{}, findErr
+
+		case findErr == nil && !waiting.Pending():
+			// Another Firebase UID already holds this email; needs linking.
+			return domain.User{}, Pair{}, domain.ErrConflict
+
+		case findErr == nil:
+			// An admin pre-registered this person. Claim that row so the roles
+			// and teams they were given survive their first sign-in.
+			user, err = s.claimPending(ctx, waiting, identity, avatar)
+			if err != nil {
+				return domain.User{}, Pair{}, err
+			}
+
+		default:
+			user = domain.User{
 				FirebaseUID:   identity.UID,
 				Email:         email,
 				FullName:      identity.Name,
@@ -76,21 +97,21 @@ func (s Service) Login(ctx context.Context, raw string, ip, agent *string) (doma
 				Teams:         []string{},
 				IsActive:      true,
 			}
-
-		if user.FullName == "" {
-			user.FullName = strings.Split(email, "@")[0]
-		}
-		created, createErr := s.Repository.Create(ctx, &user)
-		if createErr != nil {
-			return domain.User{}, Pair{}, createErr
-		}
-		if !created {
-			user, err = s.Repository.FindByFirebaseUID(ctx, identity.UID)
-			if errors.Is(err, domain.ErrNotFound) {
-				return domain.User{}, Pair{}, domain.ErrConflict
+			if user.FullName == "" {
+				user.FullName = strings.Split(email, "@")[0]
 			}
-			if err != nil {
-				return domain.User{}, Pair{}, err
+			created, createErr := s.Repository.Create(ctx, &user)
+			if createErr != nil {
+				return domain.User{}, Pair{}, createErr
+			}
+			if !created {
+				user, err = s.Repository.FindByFirebaseUID(ctx, identity.UID)
+				if errors.Is(err, domain.ErrNotFound) {
+					return domain.User{}, Pair{}, domain.ErrConflict
+				}
+				if err != nil {
+					return domain.User{}, Pair{}, err
+				}
 			}
 		}
 	} else if err != nil {
@@ -223,17 +244,126 @@ func (s Service) UpdateProfile(ctx context.Context, id string, updates map[strin
 	}
 	return s.Repository.UpdateProfile(ctx, id, updates)
 }
-func (s Service) ListUsers(ctx context.Context, search, role string, page, limit int) ([]domain.User, int64, error) {
-	if page < 1 {
-		page = 1
+
+// claimPending hands an admin-created row its real Firebase identity, keeping
+// the UUID and the roles and teams the admin already assigned to it.
+func (s Service) claimPending(ctx context.Context, waiting domain.User, identity Identity, avatar *string) (domain.User, error) {
+	updates := map[string]any{
+		"firebase_uid":   identity.UID,
+		"email_verified": identity.EmailVerified,
 	}
-	if limit < 1 {
-		limit = 20
+	if identity.Name != "" {
+		updates["full_name"] = identity.Name
+	} else if waiting.FullName == "" {
+		updates["full_name"] = strings.Split(waiting.Email, "@")[0]
 	}
-	if limit > 100 {
-		limit = 100
+	if avatar != nil && waiting.AvatarURL == nil {
+		updates["avatar_url"] = *avatar
 	}
-	return s.Repository.FindUsers(ctx, search, role, page, limit)
+	return s.Repository.ClaimPendingUser(ctx, waiting.ID, updates)
+}
+
+// GetUser returns one user for the admin detail view, archived rows included.
+func (s Service) GetUser(ctx context.Context, id string) (domain.User, error) {
+	return s.Repository.FindByID(ctx, id)
+}
+
+// CreateUser pre-registers a member by email. The row waits under a sentinel
+// firebase_uid until that person signs in with Google for the first time.
+func (s Service) CreateUser(ctx context.Context, actor, email, fullName string, roles, teams []string) (domain.User, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" || !strings.Contains(email, "@") {
+		return domain.User{}, domain.ErrBadInput
+	}
+	roles, err := cleanList(roles, []string{"user"})
+	if err != nil {
+		return domain.User{}, err
+	}
+	teams, err = cleanList(teams, []string{})
+	if err != nil {
+		return domain.User{}, err
+	}
+	exists, err := s.Repository.ExistsByEmail(ctx, email)
+	if err != nil {
+		return domain.User{}, err
+	}
+	if exists {
+		return domain.User{}, domain.ErrConflict
+	}
+
+	fullName = strings.TrimSpace(fullName)
+	if fullName == "" {
+		fullName = strings.Split(email, "@")[0]
+	}
+	user := domain.User{
+		FirebaseUID: domain.PendingUID(),
+		Email:       email,
+		FullName:    fullName,
+		Roles:       roles,
+		Teams:       teams,
+		IsActive:    true,
+	}
+	created, err := s.Repository.Create(ctx, &user)
+	if err != nil {
+		return domain.User{}, err
+	}
+	if !created {
+		return domain.User{}, domain.ErrConflict
+	}
+	data, err := json.Marshal(map[string]any{"target_user_id": user.ID, "email": user.Email, "roles": []string(user.Roles)})
+	if err != nil {
+		return domain.User{}, err
+	}
+	if err := s.Repository.CreateAuditEvent(ctx, domain.AuditEvent{UserID: &actor, EventType: "user_admin_create", EventData: data}); err != nil {
+		return domain.User{}, err
+	}
+	return user, nil
+}
+
+// SetUserArchived soft-deletes or restores a user. Archiving revokes every
+// refresh token so open sessions elsewhere stop working immediately.
+func (s Service) SetUserArchived(ctx context.Context, actor, id string, archived bool) (domain.User, error) {
+	if archived && actor == id {
+		return domain.User{}, domain.ErrBadInput
+	}
+	user, err := s.Repository.SetUserDeleted(ctx, actor, id, archived)
+	if err != nil {
+		return domain.User{}, err
+	}
+	if archived {
+		if err := s.Repository.RevokeRefreshTokens(ctx, id, ""); err != nil {
+			return domain.User{}, err
+		}
+	}
+	return user, nil
+}
+
+func cleanList(values []string, fallback []string) ([]string, error) {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return nil, domain.ErrBadInput
+		}
+		out = append(out, value)
+	}
+	if len(out) == 0 {
+		return fallback, nil
+	}
+	return out, nil
+}
+
+func (s Service) ListUsers(ctx context.Context, query domain.UserQuery) ([]domain.User, int64, error) {
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.Limit < 1 {
+		query.Limit = 20
+	}
+	if query.Limit > 100 {
+		query.Limit = 100
+	}
+	return s.Repository.FindUsers(ctx, query)
 }
 func (s Service) UpdateUser(ctx context.Context, actor, id string, updates map[string]any) (domain.User, error) {
 	if len(updates) == 0 {
@@ -260,7 +390,14 @@ func (s Service) UpdateUser(ctx context.Context, actor, id string, updates map[s
 				return domain.User{}, domain.ErrBadInput
 			}
 		default:
-			return domain.User{}, domain.ErrBadInput
+			if !adminEditableProfileFields[key] {
+				return domain.User{}, domain.ErrBadInput
+			}
+			text, ok := value.(string)
+			if !ok {
+				return domain.User{}, domain.ErrBadInput
+			}
+			updates[key] = strings.TrimSpace(text)
 		}
 	}
 	return s.Repository.UpdateUser(ctx, actor, id, updates)
