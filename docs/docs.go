@@ -53,31 +53,147 @@ const docTemplate = `{
                         "description": "Filter by role",
                         "name": "role",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "List archived users instead of active ones",
+                        "name": "archived",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.AdminListResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminListResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a member record before their first sign-in. The row waits under a sentinel firebase_uid until that person signs in with Google, which claims it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Pre-register a user (admin)",
+                "parameters": [
+                    {
+                        "description": "email, full_name, roles, teams",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     }
                 }
             }
         },
         "/admin/users/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Get one user with full profile (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminDetailResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "put": {
                 "security": [
                     {
@@ -108,7 +224,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.AdminUpdateRequest"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUpdateRequest"
                         }
                     }
                 ],
@@ -116,31 +232,144 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.AdminUserResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUserResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Soft delete: sets deleted_at, deactivates the account and revokes every refresh token. Reversible with the restore endpoint.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Archive a user (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Admin"
+                ],
+                "summary": "Restore an archived user (admin)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminDetailResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     }
                 }
@@ -165,7 +394,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.LoginRequest"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginRequest"
                         }
                     }
                 ],
@@ -173,31 +402,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.LoginResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     }
                 }
@@ -226,7 +455,7 @@ const docTemplate = `{
                         "name": "body",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/dto.LogoutRequest"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutRequest"
                         }
                     }
                 ],
@@ -234,19 +463,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.LogoutResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     }
                 }
@@ -270,19 +499,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ProfileResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     }
                 }
@@ -312,7 +541,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.ProfileUpdateRequest"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUpdateRequest"
                         }
                     }
                 ],
@@ -320,31 +549,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.ProfileResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     }
                 }
@@ -369,7 +598,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.RefreshRequest"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.RefreshRequest"
                         }
                     }
                 ],
@@ -377,19 +606,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.TokensResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokensResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/dto.ErrorResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse"
                         }
                     }
                 }
@@ -408,7 +637,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/dto.HealthResponse"
+                            "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.HealthResponse"
                         }
                     }
                 }
@@ -416,7 +645,49 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.AdminListResponse": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminCreateRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "jane.doe@babcock.edu.ng"
+                },
+                "full_name": {
+                    "type": "string",
+                    "example": "Jane Doe"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "user"
+                    ]
+                },
+                "teams": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "core"
+                    ]
+                }
+            }
+        },
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminDetailResponse": {
+            "type": "object",
+            "properties": {
+                "success": {
+                    "type": "boolean"
+                },
+                "user": {
+                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUserDetail"
+                }
+            }
+        },
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminListResponse": {
             "type": "object",
             "properties": {
                 "limit": {
@@ -434,17 +705,49 @@ const docTemplate = `{
                 "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.AdminUser"
+                        "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser"
                     }
                 }
             }
         },
-        "dto.AdminUpdateRequest": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUpdateRequest": {
             "type": "object",
             "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "birthday": {
+                    "type": "string",
+                    "example": "2000-01-15"
+                },
+                "department": {
+                    "type": "string",
+                    "example": "Computer Science"
+                },
+                "faculty": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "description": "Profile fields an admin may correct on someone else's record.",
+                    "type": "string",
+                    "example": "Jane Doe"
+                },
+                "gender": {
+                    "type": "string"
+                },
                 "is_active": {
                     "type": "boolean",
                     "example": true
+                },
+                "matric_no": {
+                    "type": "string",
+                    "example": "20/1234"
+                },
+                "primary_skill_level": {
+                    "type": "string"
+                },
+                "primary_track": {
+                    "type": "string"
                 },
                 "roles": {
                     "type": "array",
@@ -452,9 +755,18 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "example": [
-                        "member",
+                        "user",
                         "admin"
                     ]
+                },
+                "secondary_skill_level": {
+                    "type": "string"
+                },
+                "secondary_track": {
+                    "type": "string"
+                },
+                "student_status": {
+                    "type": "string"
                 },
                 "teams": {
                     "type": "array",
@@ -464,16 +776,23 @@ const docTemplate = `{
                     "example": [
                         "core"
                     ]
+                },
+                "whatsapp_number": {
+                    "type": "string",
+                    "example": "+2348012345678"
                 }
             }
         },
-        "dto.AdminUser": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser": {
             "type": "object",
             "properties": {
                 "avatar_url": {
                     "type": "string"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
                     "type": "string"
                 },
                 "email": {
@@ -491,6 +810,9 @@ const docTemplate = `{
                 "last_login_at": {
                     "type": "string"
                 },
+                "pending": {
+                    "type": "boolean"
+                },
                 "roles": {
                     "type": "array",
                     "items": {
@@ -505,18 +827,113 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.AdminUserResponse": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUserDetail": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "birthday": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "department": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "email_verified": {
+                    "type": "boolean"
+                },
+                "faculty": {
+                    "type": "string"
+                },
+                "firebase_uid": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "last_login_at": {
+                    "type": "string"
+                },
+                "matric_no": {
+                    "type": "string"
+                },
+                "pending": {
+                    "type": "boolean"
+                },
+                "primary_skill_level": {
+                    "type": "string"
+                },
+                "primary_track": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "secondary_skill_level": {
+                    "type": "string"
+                },
+                "secondary_track": {
+                    "type": "string"
+                },
+                "student_status": {
+                    "type": "string"
+                },
+                "teams": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "tos_agreed": {
+                    "type": "boolean"
+                },
+                "tos_agreed_at": {
+                    "type": "string"
+                },
+                "tos_version": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "whatsapp_number": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUserResponse": {
             "type": "object",
             "properties": {
                 "success": {
                     "type": "boolean"
                 },
                 "user": {
-                    "$ref": "#/definitions/dto.AdminUser"
+                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.AdminUser"
                 }
             }
         },
-        "dto.ErrorResponse": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -527,7 +944,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.HealthResponse": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.HealthResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -535,7 +952,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.LoginRequest": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginRequest": {
             "type": "object",
             "properties": {
                 "firebase_token": {
@@ -544,21 +961,21 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.LoginResponse": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginResponse": {
             "type": "object",
             "properties": {
                 "success": {
                     "type": "boolean"
                 },
                 "tokens": {
-                    "$ref": "#/definitions/dto.TokenPair"
+                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair"
                 },
                 "user": {
-                    "$ref": "#/definitions/dto.LoginUser"
+                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginUser"
                 }
             }
         },
-        "dto.LoginUser": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LoginUser": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -587,7 +1004,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.LogoutRequest": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -596,7 +1013,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.LogoutResponse": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.LogoutResponse": {
             "type": "object",
             "properties": {
                 "message": {
@@ -607,18 +1024,18 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.ProfileResponse": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileResponse": {
             "type": "object",
             "properties": {
                 "success": {
                     "type": "boolean"
                 },
                 "user": {
-                    "$ref": "#/definitions/dto.ProfileUser"
+                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUser"
                 }
             }
         },
-        "dto.ProfileUpdateRequest": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUpdateRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -677,7 +1094,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.ProfileUser": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.ProfileUser": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -766,7 +1183,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.RefreshRequest": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.RefreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -775,7 +1192,7 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.TokenPair": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -792,14 +1209,14 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.TokensResponse": {
+        "github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokensResponse": {
             "type": "object",
             "properties": {
                 "success": {
                     "type": "boolean"
                 },
                 "tokens": {
-                    "$ref": "#/definitions/dto.TokenPair"
+                    "$ref": "#/definitions/github_com_GDGBabcockUniversity_auth-v2_internal_httpapi_dto.TokenPair"
                 }
             }
         }
@@ -817,8 +1234,8 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "2.0",
-	Host:             "localhost:8080",
-	BasePath:         "/",
+	Host:             "",
+	BasePath:         "",
 	Schemes:          []string{},
 	Title:            "GDG Babcock Auth API",
 	Description:      "Firebase login → platform JWTs. Bearer access token on protected routes; admin role for /admin/*.",
