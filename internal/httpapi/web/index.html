@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chapter register — GDG Babcock</title>
+<meta name="description" content="Sign in, keep your member profile current, and manage chapter roles and teams.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&display=swap">
+<link rel="stylesheet" href="/dashboard/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='4' height='16' fill='%231a73e8'/><rect x='4' width='4' height='16' fill='%23d93025'/><rect x='8' width='4' height='16' fill='%23f9ab00'/><rect x='12' width='4' height='16' fill='%231e8e3e'/></svg>">
+</head>
+<body data-view="loading">
+<div class="chapter-stripe" aria-hidden="true"></div>
+
+<!-- Boot / failure states -->
+<div class="gate" data-when="loading">
+  <p class="gate-note">Loading the register…</p>
+</div>
+
+<div class="gate" data-when="setup">
+  <div class="gate-panel">
+    <h1 class="gate-title">Sign-in isn't switched on yet</h1>
+    <p>The dashboard needs the Firebase web keys to start a Google sign-in. Set these on the auth service and restart it:</p>
+    <dl class="envlist">
+      <dt>FIREBASE_WEB_API_KEY</dt><dd>Web API key from Firebase console → Project settings → General</dd>
+      <dt>FIREBASE_AUTH_DOMAIN</dt><dd>Usually <span class="mono">your-project.firebaseapp.com</span>. Defaults from the project ID.</dd>
+      <dt>FIREBASE_PROJECT_ID</dt><dd>Already required by the service</dd>
+    </dl>
+    <p class="gate-foot">Add this page's origin to Firebase → Authentication → Settings → Authorized domains too.</p>
+  </div>
+</div>
+
+<!-- Sign in -->
+<div class="gate" data-when="signin">
+  <div class="gate-panel signin">
+    <div class="signin-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <h1 class="gate-title">Chapter register</h1>
+    <p class="signin-lede">The Google Developer Group at Babcock University. Sign in with the Google account you joined the chapter with.</p>
+    <button id="google-signin" class="btn btn-quiet btn-wide" type="button">
+      <svg class="g-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.7v3h3.9c2.3-2.1 3.5-5.2 3.5-8.9Z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3a7.2 7.2 0 0 1-10.7-3.8h-4v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.4 14.3a7.1 7.1 0 0 1 0-4.6V6.6h-4a12 12 0 0 0 0 10.8l4-3.1Z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.4.6 4.6 1.8l3.5-3.5A12 12 0 0 0 1.4 6.6l4 3.1A7.2 7.2 0 0 1 12 4.8Z"/></svg>
+      Continue with Google
+    </button>
+    <p id="signin-error" class="formerror" hidden></p>
+    <p class="gate-foot">Everyone signs in here. Admins also get the member roster.</p>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div class="shell" data-when="app">
+  <nav class="rail" aria-label="Sections">
+    <div class="rail-mark">
+      <span class="rail-bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="rail-wordmark">GDG Babcock<br><small>Chapter register</small></span>
+    </div>
+    <ul class="rail-nav">
+      <li><button type="button" class="rail-link" data-page="members" hidden>Members</button></li>
+      <li><button type="button" class="rail-link is-current" data-page="profile">My profile</button></li>
+    </ul>
+    <div class="rail-foot">
+      <div class="whoami">
+        <span id="me-avatar" class="avatar" aria-hidden="true"></span>
+        <span><strong id="me-name">—</strong><br><span id="me-email" class="muted"></span></span>
+      </div>
+      <p id="session-expiry" class="muted session-expiry"></p>
+      <button id="signout" class="btn btn-quiet btn-wide" type="button">Sign out</button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- Members -->
+    <section class="page" data-page="members" hidden>
+      <header class="page-head page-head-row">
+        <div>
+          <h1>Members</h1>
+          <p class="page-sub">Everyone on the chapter register, including people invited but not yet signed in.</p>
+        </div>
+        <button id="add-member" class="btn btn-primary" type="button">Add member</button>
+      </header>
+
+      <div class="ledger" id="ledger" aria-live="polite"></div>
+
+      <form class="filters" id="filters" role="search">
+        <label class="field grow">
+          <span class="field-label">Search</span>
+          <input id="q" type="search" name="search" placeholder="Name or email" autocomplete="off">
+        </label>
+        <label class="field">
+          <span class="field-label">Role</span>
+          <select id="role-filter" name="role">
+            <option value="">Everyone</option>
+            <option value="user">Users</option>
+            <option value="admin">Admins</option>
+            <option value="moderator">Moderators</option>
+            <option value="lead">Leads</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">Show</span>
+          <select id="status-filter" name="archived">
+            <option value="">On the register</option>
+            <option value="true">Archived</option>
+          </select>
+        </label>
+        <label class="field">
+          <span class="field-label">Per page</span>
+          <select id="limit" name="limit">
+            <option>20</option><option>50</option><option>100</option>
+          </select>
+        </label>
+      </form>
+
+      <div class="table-wrap">
+        <table class="roster">
+          <thead>
+            <tr>
+              <th scope="col">Member</th>
+              <th scope="col">Roles</th>
+              <th scope="col">Teams</th>
+              <th scope="col">Last signed in</th>
+              <th scope="col">Added</th>
+              <th scope="col"><span class="sr-only">Status</span></th>
+            </tr>
+          </thead>
+          <tbody id="roster-body"></tbody>
+        </table>
+        <p id="roster-empty" class="empty" hidden></p>
+      </div>
+
+      <div class="pager">
+        <button id="prev" class="btn btn-quiet" type="button">Previous</button>
+        <span id="pager-label" class="muted"></span>
+        <button id="next" class="btn btn-quiet" type="button">Next</button>
+      </div>
+    </section>
+
+    <!-- My profile -->
+    <section class="page" data-page="profile" hidden>
+      <header class="page-head">
+        <h1>My profile</h1>
+        <p class="page-sub">What the chapter knows about you. Roles, teams and account status are set by chapter leads.</p>
+      </header>
+
+      <form id="profile-form" class="profile-form">
+        <fieldset class="group">
+          <legend>Who you are</legend>
+          <div class="grid">
+            <label class="field"><span class="field-label">Full name</span><input name="full_name" type="text" autocomplete="name"></label>
+            <label class="field"><span class="field-label">WhatsApp number</span><input name="whatsapp_number" type="tel" placeholder="+2348012345678"></label>
+            <label class="field"><span class="field-label">Gender</span><input name="gender" type="text"></label>
+            <label class="field"><span class="field-label">Birthday</span><input name="birthday" type="date"></label>
+            <label class="field span2"><span class="field-label">Avatar URL</span><input name="avatar_url" type="url"></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>Studies</legend>
+          <div class="grid">
+            <label class="field"><span class="field-label">Matric number</span><input name="matric_no" type="text" placeholder="20/1234"></label>
+            <label class="field"><span class="field-label">Student status</span>
+              <select name="student_status">
+                <option value="">Not set</option>
+                <option value="undergraduate">Undergraduate</option>
+                <option value="postgraduate">Postgraduate</option>
+                <option value="alumni">Alumni</option>
+                <option value="staff">Staff</option>
+              </select>
+            </label>
+            <label class="field"><span class="field-label">Department</span><input name="department" type="text" placeholder="Computer Science"></label>
+            <label class="field"><span class="field-label">Faculty</span><input name="faculty" type="text" placeholder="Computing &amp; Engineering Sciences"></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>Tracks</legend>
+          <div class="grid">
+            <label class="field"><span class="field-label">Primary track</span><select name="primary_track" data-tracks></select></label>
+            <label class="field"><span class="field-label">Skill level</span><select name="primary_skill_level" data-levels></select></label>
+            <label class="field"><span class="field-label">Secondary track</span><select name="secondary_track" data-tracks></select></label>
+            <label class="field"><span class="field-label">Skill level</span><select name="secondary_skill_level" data-levels></select></label>
+          </div>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>Terms of service</legend>
+          <label class="check"><input type="checkbox" name="tos_agreed"> <span>I agree to the GDG Babcock terms of service</span></label>
+          <p id="tos-state" class="muted"></p>
+        </fieldset>
+
+        <div class="formbar">
+          <button class="btn btn-primary" type="submit">Save changes</button>
+          <button class="btn btn-quiet" type="reset" id="profile-reset">Discard</button>
+          <span id="profile-meta" class="muted"></span>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<!-- Member editor -->
+<div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+<aside class="sheet" id="sheet" hidden aria-labelledby="sheet-name" role="dialog" aria-modal="true">
+  <header class="sheet-head">
+    <div class="whoami">
+      <span id="sheet-avatar" class="avatar avatar-lg" aria-hidden="true"></span>
+      <span><strong id="sheet-name">—</strong><br><span id="sheet-email" class="muted"></span></span>
+    </div>
+    <button id="sheet-close" class="iconbtn" type="button" aria-label="Close editor">×</button>
+  </header>
+
+  <p id="sheet-banner" class="banner" hidden></p>
+
+  <form id="sheet-form" class="sheet-body">
+    <div class="sheet-block">
+      <h2>Roles</h2>
+      <p class="muted">Roles decide what this person can reach across chapter services.</p>
+      <div id="roles-box" class="chipset"></div>
+    </div>
+
+    <div class="sheet-block">
+      <h2>Teams</h2>
+      <p class="muted">Teams are used for scoped access, like core-team tooling.</p>
+      <div id="teams-box" class="chipset"></div>
+      <div class="addrow">
+        <input id="team-new" type="text" placeholder="Add another team" autocomplete="off">
+        <button id="team-add" class="btn btn-quiet" type="button">Add</button>
+      </div>
+    </div>
+
+    <div class="sheet-block">
+      <h2>Profile</h2>
+      <p class="muted">Correct a member's details on their behalf. They can edit these themselves too.</p>
+      <div class="grid grid-tight">
+        <label class="field"><span class="field-label">Full name</span><input name="full_name" type="text"></label>
+        <label class="field"><span class="field-label">WhatsApp number</span><input name="whatsapp_number" type="tel"></label>
+        <label class="field"><span class="field-label">Matric number</span><input name="matric_no" type="text"></label>
+        <label class="field"><span class="field-label">Student status</span>
+          <select name="student_status">
+            <option value="">Not set</option>
+            <option value="undergraduate">Undergraduate</option>
+            <option value="postgraduate">Postgraduate</option>
+            <option value="alumni">Alumni</option>
+            <option value="staff">Staff</option>
+          </select>
+        </label>
+        <label class="field"><span class="field-label">Department</span><input name="department" type="text"></label>
+        <label class="field"><span class="field-label">Faculty</span><input name="faculty" type="text"></label>
+        <label class="field"><span class="field-label">Primary track</span><select name="primary_track" data-tracks></select></label>
+        <label class="field"><span class="field-label">Skill level</span><select name="primary_skill_level" data-levels></select></label>
+        <label class="field"><span class="field-label">Secondary track</span><select name="secondary_track" data-tracks></select></label>
+        <label class="field"><span class="field-label">Skill level</span><select name="secondary_skill_level" data-levels></select></label>
+        <label class="field"><span class="field-label">Gender</span><input name="gender" type="text"></label>
+        <label class="field"><span class="field-label">Birthday</span><input name="birthday" type="date"></label>
+      </div>
+    </div>
+
+    <div class="sheet-block">
+      <h2>Account</h2>
+      <label class="check"><input type="checkbox" id="is-active"> <span>Account is active</span></label>
+      <p class="muted">Deactivating signs this person out everywhere and blocks new sign-ins.</p>
+      <p id="self-note" class="muted" hidden>This is your own account. You cannot remove your admin role, deactivate yourself or archive your own record — ask another chapter lead.</p>
+    </div>
+
+    <dl class="factlist">
+      <dt>User ID</dt><dd class="mono" id="sheet-id"></dd>
+      <dt>Email</dt><dd id="sheet-email-fact"></dd>
+      <dt>Email verified</dt><dd id="sheet-verified"></dd>
+      <dt>Terms of service</dt><dd id="sheet-tos"></dd>
+      <dt>Added</dt><dd id="sheet-joined"></dd>
+      <dt>Last signed in</dt><dd id="sheet-seen"></dd>
+      <dt>Last updated</dt><dd id="sheet-updated"></dd>
+    </dl>
+
+    <p id="sheet-error" class="formerror" hidden></p>
+  </form>
+
+  <footer class="sheet-foot">
+    <button class="btn btn-primary" type="submit" form="sheet-form">Save changes</button>
+    <button class="btn btn-quiet" type="button" id="sheet-cancel">Cancel</button>
+    <button class="btn btn-danger" type="button" id="sheet-archive">Archive</button>
+    <button class="btn btn-quiet" type="button" id="sheet-restore" hidden>Restore</button>
+  </footer>
+</aside>
+
+<!-- Add member -->
+<div class="sheet-backdrop" id="create-backdrop" hidden></div>
+<aside class="sheet" id="create-sheet" hidden aria-labelledby="create-title" role="dialog" aria-modal="true">
+  <header class="sheet-head">
+    <strong id="create-title">Add a member</strong>
+    <button id="create-close" class="iconbtn" type="button" aria-label="Close">×</button>
+  </header>
+  <form id="create-form" class="sheet-body">
+    <p class="muted">
+      This reserves a place on the register with the roles and teams you pick. The record stays
+      pending until that person signs in with Google using this exact address, which claims it.
+      No email is sent from here — tell them to sign in.
+    </p>
+    <label class="field"><span class="field-label">Email</span>
+      <input name="email" type="email" required placeholder="jane.doe@babcock.edu.ng" autocomplete="off">
+    </label>
+    <label class="field"><span class="field-label">Full name</span>
+      <input name="full_name" type="text" placeholder="Jane Doe" autocomplete="off">
+    </label>
+    <div class="sheet-block">
+      <h2>Roles</h2>
+      <div id="create-roles" class="chipset"></div>
+    </div>
+    <div class="sheet-block">
+      <h2>Teams</h2>
+      <div id="create-teams" class="chipset"></div>
+    </div>
+    <p id="create-error" class="formerror" hidden></p>
+  </form>
+  <footer class="sheet-foot">
+    <button class="btn btn-primary" type="submit" form="create-form">Add to register</button>
+    <button class="btn btn-quiet" type="button" id="create-cancel">Cancel</button>
+  </footer>
+</aside>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script type="module" src="/dashboard/app.js"></script>
+</body>
+</html>

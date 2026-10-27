@@ -55,7 +55,17 @@ func main() {
 	docs.SwaggerInfo.BasePath = cfg.SwaggerBasePath
 
 	slog.Info("auth service listening", "port", cfg.Port)
-	if err := (httpapi.API{Service: *service, Origins: cfg.CORSOrigins}).App().Listen(":" + cfg.Port); err != nil {
+	api := httpapi.API{
+		Service: *service,
+		Origins: cfg.CORSOrigins,
+		Firebase: httpapi.FirebaseWebConfig{
+			APIKey:     cfg.FirebaseWebAPIKey,
+			AuthDomain: cfg.FirebaseAuthDomain,
+			ProjectID:  cfg.FirebaseProjectID,
+		},
+	}
+
+	if err := api.App().Listen(":" + cfg.Port); err != nil {
 		slog.Error("server stopped", "error", err)
 		os.Exit(1)
 	}

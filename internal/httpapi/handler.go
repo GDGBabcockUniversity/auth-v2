@@ -65,6 +65,29 @@ func profileUpdates(body dto.ProfileUpdateRequest) map[string]any {
 	return m
 }
 
+func profileUser(u domain.User) dto.ProfileUser {
+	return dto.ProfileUser{
+		ID: u.ID, FirebaseUID: u.FirebaseUID, Email: u.Email, FullName: u.FullName,
+		WhatsAppNumber: u.WhatsAppNumber, AvatarURL: u.AvatarURL, EmailVerified: u.EmailVerified,
+		Gender: u.Gender, Birthday: u.Birthday, StudentStatus: u.StudentStatus,
+		MatricNo: u.MatricNo, Department: u.Department, Faculty: u.Faculty,
+		PrimaryTrack: u.PrimaryTrack, SecondaryTrack: u.SecondaryTrack,
+		PrimarySkillLevel: u.PrimarySkillLevel, SecondarySkillLevel: u.SecondarySkillLevel,
+		Teams: u.Teams, Roles: u.Roles, TOSAgreed: u.TOSAgreed,
+		TOSAgreedAt: u.TOSAgreedAt, TOSVersion: u.TOSVersion, CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt, LastLoginAt: u.LastLoginAt, IsActive: u.IsActive,
+	}
+}
+
+func adminUser(u domain.User) dto.AdminUser {
+	return dto.AdminUser{
+		ID: u.ID, Email: u.Email, FullName: u.FullName, AvatarURL: u.AvatarURL,
+		Roles: u.Roles, Teams: u.Teams, IsActive: u.IsActive,
+		Pending: u.Pending(), DeletedAt: u.DeletedAt,
+		CreatedAt: u.CreatedAt, LastLoginAt: u.LastLoginAt,
+	}
+}
+
 func adminUpdates(body dto.AdminUpdateRequest) map[string]any {
 	m := map[string]any{}
 	if body.Roles != nil {
@@ -83,6 +106,18 @@ func adminUpdates(body dto.AdminUpdateRequest) map[string]any {
 	}
 	if body.IsActive != nil {
 		m["is_active"] = *body.IsActive
+	}
+	for column, value := range map[string]*string{
+		"full_name": body.FullName, "whatsapp_number": body.WhatsAppNumber,
+		"avatar_url": body.AvatarURL, "gender": body.Gender, "birthday": body.Birthday,
+		"student_status": body.StudentStatus, "matric_no": body.MatricNo,
+		"department": body.Department, "faculty": body.Faculty,
+		"primary_track": body.PrimaryTrack, "secondary_track": body.SecondaryTrack,
+		"primary_skill_level": body.PrimarySkillLevel, "secondary_skill_level": body.SecondarySkillLevel,
+	} {
+		if value != nil {
+			m[column] = *value
+		}
 	}
 	return m
 }
@@ -224,17 +259,7 @@ func (a API) logout(c fiber.Ctx) error {
 // @Router       /auth/me [get]
 func (a API) me(c fiber.Ctx) error {
 	u := c.Locals("user").(domain.User)
-	return c.JSON(dto.ProfileResponse{Success: true, User: dto.ProfileUser{
-		ID: u.ID, FirebaseUID: u.FirebaseUID, Email: u.Email, FullName: u.FullName,
-		WhatsAppNumber: u.WhatsAppNumber, AvatarURL: u.AvatarURL, EmailVerified: u.EmailVerified,
-		Gender: u.Gender, Birthday: u.Birthday, StudentStatus: u.StudentStatus,
-		MatricNo: u.MatricNo, Department: u.Department, Faculty: u.Faculty,
-		PrimaryTrack: u.PrimaryTrack, SecondaryTrack: u.SecondaryTrack,
-		PrimarySkillLevel: u.PrimarySkillLevel, SecondarySkillLevel: u.SecondarySkillLevel,
-		Teams: u.Teams, Roles: u.Roles, TOSAgreed: u.TOSAgreed,
-		TOSAgreedAt: u.TOSAgreedAt, TOSVersion: u.TOSVersion, CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt, LastLoginAt: u.LastLoginAt, IsActive: u.IsActive,
-	}})
+	return c.JSON(dto.ProfileResponse{Success: true, User: profileUser(u)})
 }
 
 func (a API) verify(c fiber.Ctx) error {
@@ -294,6 +319,7 @@ func (a API) requireAdmin(c fiber.Ctx) error {
 // @Param        limit   query     int     false  "Page size (default 20, max 100)"
 // @Param        search  query     string  false  "Search email/name"
 // @Param        role    query     string  false  "Filter by role"
+// @Param        archived query    bool    false  "List archived users instead of active ones"
 // @Success      200     {object}  dto.AdminListResponse
 // @Failure      401     {object}  dto.ErrorResponse
 // @Failure      403     {object}  dto.ErrorResponse
@@ -310,17 +336,19 @@ func (a API) adminList(c fiber.Ctx) error {
 	if limit > 100 {
 		limit = 100
 	}
-	users, total, err := a.Service.ListUsers(c.Context(), c.Query("search"), c.Query("role"), page, limit)
+	users, total, err := a.Service.ListUsers(c.Context(), domain.UserQuery{
+		Search:   c.Query("search"),
+		Role:     c.Query("role"),
+		Archived: c.Query("archived") == "true",
+		Page:     page,
+		Limit:    limit,
+	})
 	if err != nil {
 		return err
 	}
 	out := make([]dto.AdminUser, 0, len(users))
 	for _, u := range users {
-		out = append(out, dto.AdminUser{
-			ID: u.ID, Email: u.Email, FullName: u.FullName, AvatarURL: u.AvatarURL,
-			Roles: u.Roles, Teams: u.Teams, IsActive: u.IsActive,
-			CreatedAt: u.CreatedAt, LastLoginAt: u.LastLoginAt,
-		})
+		out = append(out, adminUser(u))
 	}
 	return c.JSON(dto.AdminListResponse{Success: true, Users: out, Total: total, Page: page, Limit: limit})
 }
@@ -349,9 +377,98 @@ func (a API) adminUpdate(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(dto.AdminUserResponse{Success: true, User: dto.AdminUser{
-		ID: u.ID, Email: u.Email, FullName: u.FullName, AvatarURL: u.AvatarURL,
-		Roles: u.Roles, Teams: u.Teams, IsActive: u.IsActive,
-		CreatedAt: u.CreatedAt, LastLoginAt: u.LastLoginAt,
-	}})
+	return c.JSON(dto.AdminUserResponse{Success: true, User: adminUser(u)})
+}
+
+func adminDetail(u domain.User) dto.AdminUserDetail {
+	return dto.AdminUserDetail{ProfileUser: profileUser(u), Pending: u.Pending(), DeletedAt: u.DeletedAt}
+}
+
+// AdminGetUser godoc
+// @Summary      Get one user with full profile (admin)
+// @Tags         Admin
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path      string  true  "User UUID"
+// @Success      200  {object}  dto.AdminDetailResponse
+// @Failure      401  {object}  dto.ErrorResponse
+// @Failure      403  {object}  dto.ErrorResponse
+// @Failure      404  {object}  dto.ErrorResponse
+// @Router       /admin/users/{id} [get]
+func (a API) adminGet(c fiber.Ctx) error {
+	u, err := a.Service.GetUser(c.Context(), c.Params("id"))
+	if err != nil {
+		return err
+	}
+	return c.JSON(dto.AdminDetailResponse{Success: true, User: adminDetail(u)})
+}
+
+// AdminCreateUser godoc
+// @Summary      Pre-register a user (admin)
+// @Description  Creates a member record before their first sign-in. The row waits under a sentinel firebase_uid until that person signs in with Google, which claims it.
+// @Tags         Admin
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        body  body      dto.AdminCreateRequest  true  "email, full_name, roles, teams"
+// @Success      201   {object}  dto.AdminDetailResponse
+// @Failure      400   {object}  dto.ErrorResponse
+// @Failure      401   {object}  dto.ErrorResponse
+// @Failure      403   {object}  dto.ErrorResponse
+// @Failure      409   {object}  dto.ErrorResponse
+// @Router       /admin/users [post]
+func (a API) adminCreate(c fiber.Ctx) error {
+	var body dto.AdminCreateRequest
+	if err := c.Bind().Body(&body); err != nil {
+		return domain.ErrBadInput
+	}
+	actor := c.Locals("user").(domain.User)
+	u, err := a.Service.CreateUser(c.Context(), actor.ID, body.Email, body.FullName, body.Roles, body.Teams)
+	if err != nil {
+		return err
+	}
+	return c.Status(fiber.StatusCreated).JSON(dto.AdminDetailResponse{Success: true, User: adminDetail(u)})
+}
+
+// AdminDeleteUser godoc
+// @Summary      Archive a user (admin)
+// @Description  Soft delete: sets deleted_at, deactivates the account and revokes every refresh token. Reversible with the restore endpoint.
+// @Tags         Admin
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path      string  true  "User UUID"
+// @Success      200  {object}  dto.AdminDetailResponse
+// @Failure      400  {object}  dto.ErrorResponse
+// @Failure      401  {object}  dto.ErrorResponse
+// @Failure      403  {object}  dto.ErrorResponse
+// @Failure      404  {object}  dto.ErrorResponse
+// @Router       /admin/users/{id} [delete]
+func (a API) adminDelete(c fiber.Ctx) error {
+	actor := c.Locals("user").(domain.User)
+	u, err := a.Service.SetUserArchived(c.Context(), actor.ID, c.Params("id"), true)
+	if err != nil {
+		return err
+	}
+	return c.JSON(dto.AdminDetailResponse{Success: true, User: adminDetail(u)})
+}
+
+// AdminRestoreUser godoc
+// @Summary      Restore an archived user (admin)
+// @Tags         Admin
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id   path      string  true  "User UUID"
+// @Success      200  {object}  dto.AdminDetailResponse
+// @Failure      400  {object}  dto.ErrorResponse
+// @Failure      401  {object}  dto.ErrorResponse
+// @Failure      403  {object}  dto.ErrorResponse
+// @Failure      404  {object}  dto.ErrorResponse
+// @Router       /admin/users/{id}/restore [post]
+func (a API) adminRestore(c fiber.Ctx) error {
+	actor := c.Locals("user").(domain.User)
+	u, err := a.Service.SetUserArchived(c.Context(), actor.ID, c.Params("id"), false)
+	if err != nil {
+		return err
+	}
+	return c.JSON(dto.AdminDetailResponse{Success: true, User: adminDetail(u)})
 }

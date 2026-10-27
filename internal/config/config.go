@@ -10,6 +10,7 @@ import (
 type Config struct {
 	Port, DatabaseURL, FirebaseProjectID, FirebaseServiceAccount, JWTSecret, QSTASH_TOKEN string
 	SwaggerHost, SwaggerBasePath                                                          string
+	FirebaseWebAPIKey, FirebaseAuthDomain                                                 string
 	CORSOrigins                                                                           []string
 	AccessTTL, RefreshTTL                                                                 time.Duration
 }
@@ -25,7 +26,9 @@ func Load() (Config, error) {
 		QSTASH_TOKEN:           getEnv("QSTASH_TOKEN", ""),
 		SwaggerHost:            getEnv("SWAGGER_HOST", "localhost:8080"),
 		SwaggerBasePath:        getEnv("SWAGGER_BASE_PATH", "/"),
+		FirebaseWebAPIKey:      getEnv("FIREBASE_WEB_API_KEY", ""),
 	}
+	c.FirebaseAuthDomain = getEnv("FIREBASE_AUTH_DOMAIN", c.FirebaseProjectID+".firebaseapp.com")
 
 	if c.DatabaseURL == "" {
 		return c, errors.New("DATABASE_URL is required")

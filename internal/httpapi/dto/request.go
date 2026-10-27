@@ -32,7 +32,29 @@ type ProfileUpdateRequest struct {
 }
 
 type AdminUpdateRequest struct {
-	Roles    []string `json:"roles,omitempty" example:"member,admin"`
+	Roles    []string `json:"roles,omitempty" example:"user,admin"`
 	Teams    []string `json:"teams,omitempty" example:"core"`
 	IsActive *bool    `json:"is_active,omitempty" example:"true"`
+
+	// Profile fields an admin may correct on someone else's record.
+	FullName            *string `json:"full_name,omitempty" example:"Jane Doe"`
+	WhatsAppNumber      *string `json:"whatsapp_number,omitempty" example:"+2348012345678"`
+	AvatarURL           *string `json:"avatar_url,omitempty"`
+	Gender              *string `json:"gender,omitempty"`
+	Birthday            *string `json:"birthday,omitempty" example:"2000-01-15"`
+	StudentStatus       *string `json:"student_status,omitempty"`
+	MatricNo            *string `json:"matric_no,omitempty" example:"20/1234"`
+	Department          *string `json:"department,omitempty" example:"Computer Science"`
+	Faculty             *string `json:"faculty,omitempty"`
+	PrimaryTrack        *string `json:"primary_track,omitempty"`
+	SecondaryTrack      *string `json:"secondary_track,omitempty"`
+	PrimarySkillLevel   *string `json:"primary_skill_level,omitempty"`
+	SecondarySkillLevel *string `json:"secondary_skill_level,omitempty"`
+}
+
+type AdminCreateRequest struct {
+	Email    string   `json:"email" example:"jane.doe@babcock.edu.ng"`
+	FullName string   `json:"full_name,omitempty" example:"Jane Doe"`
+	Roles    []string `json:"roles,omitempty" example:"user"`
+	Teams    []string `json:"teams,omitempty" example:"core"`
 }

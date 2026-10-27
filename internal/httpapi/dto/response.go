@@ -53,6 +53,19 @@ type ProfileUser struct {
 	IsActive            bool       `json:"is_active"`
 }
 
+// AdminUserDetail is the full record behind the admin detail view, including
+// the pre-registration and archive state the roster summary leaves out.
+type AdminUserDetail struct {
+	ProfileUser
+	Pending   bool       `json:"pending"`
+	DeletedAt *time.Time `json:"deleted_at"`
+}
+
+type AdminDetailResponse struct {
+	Success bool            `json:"success"`
+	User    AdminUserDetail `json:"user"`
+}
+
 type AdminUser struct {
 	ID          string     `json:"id"`
 	Email       string     `json:"email"`
@@ -61,6 +74,8 @@ type AdminUser struct {
 	Roles       []string   `json:"roles"`
 	Teams       []string   `json:"teams"`
 	IsActive    bool       `json:"is_active"`
+	Pending     bool       `json:"pending"`
+	DeletedAt   *time.Time `json:"deleted_at"`
 	CreatedAt   time.Time  `json:"created_at"`
 	LastLoginAt *time.Time `json:"last_login_at"`
 }

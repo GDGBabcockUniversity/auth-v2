@@ -12,8 +12,9 @@ import (
 )
 
 type API struct {
-	Service auth.Service
-	Origins []string
+	Service  auth.Service
+	Origins  []string
+	Firebase FirebaseWebConfig
 }
 
 func (a API) App() *fiber.App {
@@ -40,9 +41,10 @@ func (a API) App() *fiber.App {
 		return c.Status(status).JSON(dto.ErrorResponse{Success: false, Error: message})
 	}})
 	app.Use(recover.New())
-	app.Use(cors.New(cors.Config{AllowOrigins: a.Origins, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"}, AllowMethods: []string{"GET", "POST", "PUT", "OPTIONS"}}))
+	app.Use(cors.New(cors.Config{AllowOrigins: a.Origins, AllowHeaders: []string{"Origin", "Content-Type", "Accept", "Authorization"}, AllowMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}}))
 
 	registerSwagger(app)
+	a.registerDashboard(app)
 
 	app.Get("/health", a.health)
 	app.Post("/auth/login", a.login)
@@ -52,6 +54,10 @@ func (a API) App() *fiber.App {
 	app.Put("/auth/profile", a.authorize, a.profile)
 	app.Get("/auth/verify", a.authorize, a.verify)
 	app.Get("/admin/users", a.authorize, a.requireAdmin, a.adminList)
+	app.Post("/admin/users", a.authorize, a.requireAdmin, a.adminCreate)
+	app.Get("/admin/users/:id", a.authorize, a.requireAdmin, a.adminGet)
 	app.Put("/admin/users/:id", a.authorize, a.requireAdmin, a.adminUpdate)
+	app.Delete("/admin/users/:id", a.authorize, a.requireAdmin, a.adminDelete)
+	app.Post("/admin/users/:id/restore", a.authorize, a.requireAdmin, a.adminRestore)
 	return app
 }

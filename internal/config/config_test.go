@@ -54,3 +54,36 @@ func TestLoadRejectsExampleJWTSecret(t *testing.T) {
 		t.Fatalf("expected JWT secret configuration error, got %v", err)
 	}
 }
+
+func TestFirebaseAuthDomainDefaultsFromProjectID(t *testing.T) {
+	base := func(t *testing.T) {
+		t.Helper()
+		t.Setenv("DATABASE_URL", "postgres://example")
+		t.Setenv("CORS_ORIGINS", "http://localhost:3000")
+		t.Setenv("FIREBASE_PROJECT_ID", "gdg-babcock")
+		t.Setenv("JWT_SECRET", "01234567890123456789012345678901")
+	}
+
+	t.Run("derived", func(t *testing.T) {
+		base(t)
+		cfg, err := config.Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.FirebaseAuthDomain != "gdg-babcock.firebaseapp.com" {
+			t.Fatalf("auth domain = %q", cfg.FirebaseAuthDomain)
+		}
+	})
+
+	t.Run("explicit wins", func(t *testing.T) {
+		base(t)
+		t.Setenv("FIREBASE_AUTH_DOMAIN", "auth.gdgbabcock.com")
+		cfg, err := config.Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.FirebaseAuthDomain != "auth.gdgbabcock.com" {
+			t.Fatalf("auth domain = %q", cfg.FirebaseAuthDomain)
+		}
+	})
+}
