@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/GDGBabcockUniversity/auth-v2/internal/auth"
 	"github.com/GDGBabcockUniversity/auth-v2/internal/domain"
@@ -59,5 +60,9 @@ func (a API) App() *fiber.App {
 	app.Put("/admin/users/:id", a.authorize, a.requireAdmin, a.adminUpdate)
 	app.Delete("/admin/users/:id", a.authorize, a.requireAdmin, a.adminDelete)
 	app.Post("/admin/users/:id/restore", a.authorize, a.requireAdmin, a.adminRestore)
+
+	app.Use(func(c fiber.Ctx) error {
+		return c.Status(http.StatusNotFound).JSON(fiber.Map{"error": "Not found"})
+	})
 	return app
 }
